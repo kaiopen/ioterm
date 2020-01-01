@@ -1,0 +1,33 @@
+{
+  "name": "ioterm",
+  "version": "0.0.1",
+  "description": "A front-end terminal component.",
+  "main": "lib/ioterm.js",
+  "types": "lib/ioterm.d.ts",
+  "directories": {
+    "lib": "lib"
+  },
+  "scripts": {
+    "prepublish": "npm run build",
+    "build": "tsc -p .",
+    "rebuild": "npm run clean && npm run build",
+    "clean": "rm -rf lib",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/kaiopen/IOTerm.git"
+  },
+  "keywords": [
+    "term"
+  ],
+  "author": "Kai Zhang",
+  "license": "MIT",
+  "bugs": {
+    "url": "https://github.com/kaiopen/IOTerm/issues"
+  },
+  "homepage": "https://github.com/kaiopen/IOTerm#readme",
+  "devDependencies": {
+    "typescript": "^3.7.4"
+  }
+}
