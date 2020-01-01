@@ -1,5 +1,7 @@
 IOTerm 是一个简单、需继续定制化开发的前端终端模拟组件。除了仅 500 行代码，包含十分之一的注释之外，简单更体现在 IOTerm 只保证正常的输入（I）和正确的显示（O），而将更多功能以接口的方式留给使用者继续定制化开发。
 
+[English](https://github.com/kaiopen/IOTerm/blob/master/README-EN.md)
+
 ### 定位和声明
 * IOTerm 仅提供终端页面的显示和保证正常的输入和正确的显示，具体的输入数据处理、命令执行、网络传输等功能由使用者决定。
 * IOTerm 参考了 [XTerm.js](https://github.com/xtermjs/xterm.js) 和 [简诗](https://github.com/moyuer1992/-jianshi)，感谢这些优秀项目的开源。
@@ -108,7 +110,7 @@ term.write(data.prefix);
 
 ```
 
-更多样例见 []()。
+更多[样例](https://github.com/kaiopen/IOTerm/tree/master/demo)。
 
 ### 后续工作
 * 复制：去除复制的内容中由换行符 &lt;br&gt; 导致的空格
