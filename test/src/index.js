@@ -44,7 +44,7 @@ term.setCommandHandler((command) => {
     // Escape '<', '>' and '&' to '&lt;', '&gt;' and '&amp;'.
     // Pay attention to the order between highlighting and escaping.
     command = escapeText(command);
-    
+
     var i = 0;
     var timer = setInterval(() => {
         term.write(i++ + 'Hello, ' + command + '\n');

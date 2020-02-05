@@ -405,6 +405,31 @@ class IOTerm {
             }
         });
 
+        this.term.addEventListener('copy', (event) => {
+            let selectionText = window.getSelection().toString();
+            selectionText = selectionText
+                            .replace(/\r\n/g, '')
+                            .replace(/\r/g, '')
+                            .replace(/\n/g, '');
+
+            event.clipboardData.setData('text/plain', selectionText);
+            event.preventDefault();
+        });
+
+        this.term.addEventListener('paste', (event) => {
+            let text = event.clipboardData.getData('text');
+            text = text.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
+
+            let line = text.split('\n')[0];
+            this.write(escapeText(line + '\n'));
+            if (!this.isRunning) {
+                this.isRunning = true;
+                this.commandHandler(line);
+            }
+            
+            event.preventDefault();
+        });
+
         this.input.addEventListener('input', (event) => {
             let value = event.target['value'];
             let wrap = this.autoWrap(this.lastLine + escapeText(value));
