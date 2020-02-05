@@ -13,70 +13,107 @@ function escapeText(strHtml: string) {
     );
 }
 
-class IOTerm {
-    private term: HTMLElement;
-    private panel: HTMLElement;
+function getScrollWidth() {
+    const container = document.createElement('div');
+    container.style.position = 'absolute';
+    container.style.width = '100px';
+    container.style.overflow = 'scroll';
 
+    const content = document.createElement('div');
+    content.style.width = '100%';
+
+    document.body.append(container);
+    container.append(content);
+    const scrollWidth = container.offsetWidth - content.offsetWidth;
+    content.remove();
+    container.remove();
+    return scrollWidth;
+}
+
+class IOTerm {
+    private term: HTMLDivElement;
+
+    // The element `htmlPanel` shows `html` and `tmpPanel` shows others.
+    private container: HTMLDivElement;
+    private htmlPanel: HTMLPreElement;
+    private tmpPanel: HTMLPreElement;
+
+    private measurement: HTMLPreElement;
     // The element `input` moves as soon as the element `cursor` moving.
-    private cursor: HTMLElement;
-    private cursorContent: HTMLElement;
-    private input: HTMLElement;
-    private measurement: HTMLElement;
+    private cursor: HTMLDivElement;
+    private cursorBg: HTMLDivElement;
+    private cursorContent: HTMLDivElement;
+    private input: HTMLInputElement;
 
     private backgroundColor: string;
     private textColor: string;
 
-    // `readonlyLines` consists of highlighted readonly text excluding the
+    private prefix: string;
+
+    // `html` consists of highlighted readonly text excluding the
     // last line which does not end with a line feed and is saved in
-    // `readonlyLastLine`. In other words, `readonlyLines` ends with a line
+    // `lastLine`. In other words, `html` ends with a line
     // feed '\n' or <br>. The editable text, the value of input element, does
     // not saved unless it becomes readonly.
-    private readonlyLines: string;
+    private html: string;
 
-    // `readonlyLastLine` saves the last line which does not end with a line
+    // `lastLine` saves the last line which does not end with a line
     // feed. Even an empty line is a newline.
-    private readonlyLastLine: string;
+    private lastLine: string;
 
     // `numRows` is the number of rows of readonly text including
-    // `readonlyLines` and `readonlyLastLine`. A new line is caused by
+    // `html` and `lastLine`. A new line is caused by
     // character '\n' or HTML tag <br>. The initial value, 1, means the
-    // `readonlyLastLine` even empty.
+    // `lastLine` even empty.
     private numRows: number;
 
     // A timer for flashing cursor.
     private timer: any;
 
-    private CHARWIDTH: number;
-    private CHARHEIGHT: number;
+    private readonly CHARWIDTH: number;
+    private readonly CHARHEIGHT: number;
 
+    private isRunning: boolean;
     private commandHandler: Function;
 
     constructor(parentElement: HTMLElement) {
         this.term = document.createElement('div');
-        this.panel = document.createElement('pre');
-        this.cursor = document.createElement('div');
-        let cursorBg = document.createElement('div');
-        this.cursorContent = document.createElement('div');
-        this.input = document.createElement('input');
+
+        this.container = document.createElement('div');
+        this.htmlPanel = document.createElement('pre');
+        this.tmpPanel = document.createElement('pre');
+
         this.measurement = document.createElement('pre');
 
+        this.cursor = document.createElement('div');
+        this.cursorBg = document.createElement('div');
+        this.cursorContent = document.createElement('div');
+        this.input = document.createElement('input');
+
         parentElement.append(this.term);
-        this.term.append(this.measurement, this.input, this.panel, this.cursor);
-        this.cursor.append(cursorBg, this.cursorContent);
+        this.term.append(
+            this.measurement, 
+            this.cursor, this.input, 
+            this.container
+        );
+        this.cursor.append(this.cursorBg, this.cursorContent);
+        this.container.append(this.htmlPanel, this.tmpPanel);
 
         // Initialization.
-        this.readonlyLines = '';
-        this.readonlyLastLine = '';
+        this.prefix = '';
+        this.html = '';
+        this.lastLine = '';
         this.numRows = 1;
-        this.backgroundColor = '#2e3436';
-        this.textColor = '#eee';
+        this.backgroundColor = '';
+        this.textColor = '';
+
         this.setStyle();
 
         this.measurement.innerHTML = '&nbsp;';
         this.CHARWIDTH = this.measurement.offsetWidth;
         this.CHARHEIGHT = this.measurement.offsetHeight;
         this.cursor.style.height = this.CHARHEIGHT + 'px';
-        cursorBg.style.height = this.CHARHEIGHT - 2 + 'px';
+        this.cursorBg.style.height = this.CHARHEIGHT - 2 + 'px';
 
         this.commandHandler = () => {};
 
@@ -87,20 +124,6 @@ class IOTerm {
     }
 
     private setStyle() {
-        const container = document.createElement('div');
-        container.style.position = 'absolute';
-        container.style.width = '100px';
-        container.style.overflow = 'scroll';
-
-        const content = document.createElement('div');
-        content.style.width = '100%';
-
-        document.body.append(container);
-        container.append(content);
-        const SCROLLWIDTH = container.offsetWidth - content.offsetWidth;
-        content.remove();
-        container.remove();
-
         this.term.style.position = 'relative';
         // The term must be able to show one widest character at least.
         // Note that different characters may be in different widths.
@@ -108,17 +131,17 @@ class IOTerm {
         this.term.style.minWidth = '100px';
         this.term.style.height = '100%';
         this.term.style.minHeight = '30px';
-        this.term.style.backgroundColor = this.backgroundColor;
         this.term.style.fontSize = '14px';
         this.term.style.fontFamily = 'monospace';
         this.term.style.lineHeight = '1.5';
         this.term.style.overflowX = 'hidden';
         this.term.style.overflowY = 'scroll';
 
-        this.panel.style.width = this.term.offsetWidth - SCROLLWIDTH + 'px';
-        this.panel.style.height = this.term.offsetHeight + 1 + 'px';
-        this.panel.style.margin = '0';
-        this.panel.style.color = this.textColor;
+        this.measurement.style.position = 'absolute';
+        this.measurement.style.top = '0';
+        this.measurement.style.left = '0';
+        this.measurement.style.zIndex = '-100';
+        this.measurement.style.margin = '0';
 
         this.cursor.style.position = 'absolute';
         this.cursor.style.top = '0';
@@ -131,15 +154,12 @@ class IOTerm {
         this.cursor.style.lineHeight = '1.5';
         this.cursor.style.opacity = '1';
 
-        let cursorBg = this.cursor.children[0];
-        cursorBg['style'].width = '100%';
-        cursorBg['style'].backgroundColor = this.textColor;
+        this.cursorBg.style.width = '100%';
 
         this.cursorContent.style.position = 'absolute';
         this.cursorContent.style.top = '0';
         this.cursorContent.style.left = '0';
         this.cursorContent.style.height = '100%';
-        this.cursorContent.style.color = this.backgroundColor;
 
         this.input.style.position = 'absolute';
         this.input.style.top = '0';
@@ -152,11 +172,20 @@ class IOTerm {
         this.input.style.fontFamily = 'monospace';
         this.input.style.lineHeight = '1.5';
 
-        this.measurement.style.position = 'absolute';
-        this.measurement.style.top = '0';
-        this.measurement.style.left = '0';
-        this.measurement.style.zIndex = '-100';
-        this.measurement.style.margin = '0';
+        const scrollWidth = getScrollWidth();
+        this.container.style.width = this.term.offsetWidth - scrollWidth + 'px';
+        this.container.style.height = this.term.offsetHeight + 1 + 'px';
+
+        this.htmlPanel.style.width = '100%';
+        this.htmlPanel.style.margin = '0';
+
+        this.tmpPanel.style.width = '100%';
+        this.tmpPanel.style.margin = '0';
+
+        this.setColor({
+            text: '#eee',
+            background: '#2e3436'
+        })
     }
 
     private getLineFeedIndices(text: string) {
@@ -172,7 +201,7 @@ class IOTerm {
         // `startIdx` is the starting index of string `subText` in string
         // `text`.
         let startIdx = 0;
-        let maxWidth = this.panel.offsetWidth;
+        let maxWidth = this.htmlPanel.offsetWidth;
         let lfIds: number[] = [];
 
         let subText: string;
@@ -335,7 +364,7 @@ class IOTerm {
             charWidth = this.measurement.offsetWidth;
             charHeight = this.measurement.offsetHeight;
         }
-        if (colOffset + charWidth >= this.panel.offsetWidth) {
+        if (colOffset + charWidth >= this.htmlPanel.offsetWidth) {
             numRows += 1;
             colOffset = 0;
         }
@@ -378,14 +407,15 @@ class IOTerm {
 
         this.input.addEventListener('input', (event) => {
             let value = event.target['value'];
-            let wrap = this.autoWrap(this.readonlyLastLine + escapeText(value));
-            this.panel.innerHTML = this.readonlyLines + wrap.wrappedHTML;
+            let wrap = this.autoWrap(this.lastLine + escapeText(value));
+            this.tmpPanel.innerHTML = wrap.wrappedHTML;
+
             let cursorPos = event.target['selectionStart'];
             if (cursorPos === value.length) {
                 this.moveCursor(this.numRows + wrap.numRows - 1, wrap.colOffset)
             } else {
                 wrap = this.autoWrap(
-                    this.readonlyLastLine +
+                    this.lastLine +
                     escapeText(value.substring(0, cursorPos))
                 )
                 this.moveCursor(
@@ -395,10 +425,12 @@ class IOTerm {
                 )
             }
         });
+
         this.input.addEventListener('blur', () => {
             clearInterval(this.timer);
             this.cursor.style.opacity = '0';
         });
+
         this.input.addEventListener('keydown', (event) => {
             let value: string;
             let cursorPos: number;
@@ -407,20 +439,24 @@ class IOTerm {
                 numRows: number,
                 colOffset: number
             }
+
             switch (event.keyCode) {
             case 13:  // Enter
                 this.term.scrollTop = this.term.scrollHeight
-                value = event.target['value'] + '\n';
-                event.target['value'] = '';
-                this.write(escapeText(value));
-                this.commandHandler(value);
+                value = (event.target as HTMLInputElement).value;
+                (event.target as HTMLInputElement).value = '';
+                this.write(escapeText(value + '\n'));
+                if (!this.isRunning) {
+                    this.isRunning = true;
+                    this.commandHandler(value);
+                }
                 break;
             case 37:  // Left
                 cursorPos = this.input['selectionEnd'] - 1;
                 if (cursorPos >= 0) {
-                    value = event.target['value'];
+                    value = (event.target as HTMLInputElement).value;
                     wrap = this.autoWrap(
-                        this.readonlyLastLine +
+                        this.lastLine +
                         escapeText(value.substring(0, cursorPos))
                     );
                     this.moveCursor(
@@ -432,10 +468,10 @@ class IOTerm {
                 break;
             case 39:  // Right
                 cursorPos = this.input['selectionEnd'] + 1;
-                value = event.target['value'];
+                value = (event.target as HTMLInputElement).value;
                 if (cursorPos <= value.length) {
                     wrap = this.autoWrap(
-                        this.readonlyLastLine +
+                        this.lastLine +
                         escapeText(value.substring(0, cursorPos))
                     );
                     this.moveCursor(
@@ -456,10 +492,23 @@ class IOTerm {
         if (background) {
             this.backgroundColor = background;
         }
+        this.term.style.backgroundColor = this.backgroundColor;
+        this.term.style.color = this.textColor;
+        this.cursorBg.style.backgroundColor = this.textColor;
+        this.cursorContent.style.color = this.backgroundColor;
+    }
+
+    public setPrefix(html: string) {
+        this.prefix = html;
     }
 
     public setCommandHandler(commandHandler: Function) {
         this.commandHandler = commandHandler;
+    }
+
+    public end() {
+        this.isRunning = false;
+        this.write(this.prefix);
     }
 
     public write(html: string) {
@@ -479,7 +528,9 @@ class IOTerm {
             isScroll = true;
         }
 
-        html = this.readonlyLastLine + html;
+        html = this.lastLine + this.input.value + html;
+        this.input.value = '';
+
         let lines = html.split('\n');
         let lastIdx = lines.length - 1;
         let wrappedLine: string;
@@ -489,7 +540,7 @@ class IOTerm {
         if (lastIdx > 0) {
             for (let i = 0; i < lastIdx; i++) {
                 wrap = this.autoWrap(lines[i]);
-                this.readonlyLines += wrap.wrappedHTML + '\n';
+                this.html += wrap.wrappedHTML + '\n';
                 this.numRows += wrap.numRows;
             }
         }
@@ -500,13 +551,14 @@ class IOTerm {
 
         lastIdx = wrappedLine.lastIndexOf('<br>');
         if (lastIdx === -1) {
-            this.readonlyLastLine = wrappedLine;
+            this.lastLine = wrappedLine;
         } else {
             lastIdx += 4;
-            this.readonlyLines += wrappedLine.substring(0, lastIdx);
-            this.readonlyLastLine = wrappedLine.substring(lastIdx);
+            this.html += wrappedLine.substring(0, lastIdx);
+            this.lastLine = wrappedLine.substring(lastIdx);
         }
-        this.panel.innerHTML = this.readonlyLines + this.readonlyLastLine;
+        this.htmlPanel.innerHTML = this.html;
+        this.tmpPanel.innerHTML = this.lastLine;
         this.moveCursor(this.numRows, wrap.colOffset);
 
         if (isScroll) {

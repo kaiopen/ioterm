@@ -27,26 +27,33 @@ function updatePrefix({ env, user, server, pwd }) {
                   '</span>$ ';
 }
 
-var welcome = 'Welcome to IOTerm. Please use escape characters "&amp;amp;", "&amp;lt;" and "&amp;gt;" instead of "&amp;", "&lt;" and "&gt;", if an ampersand, less-than sign or greater-than sign is needed to be shown. <span style="color: red">HTML tag &lt;span&gt; can be used for special style.</span> If a newline is wanted, please add line feed "\\n" rather than "\\r\\n" or HTML tag &lt;br&gt;.\n';
-
 updatePrefix({});
 
+var welcome = 'Welcome to IOTerm. Please use escape characters "&amp;amp;", "&amp;lt;" and "&amp;gt;" instead of "&amp;", "&lt;" and "&gt;", if an ampersand, less-than sign or greater-than sign is needed to be shown. <span style="color: red">HTML tag &lt;span&gt; can be used for special style.</span> If a newline is wanted, please add line feed "\\n" rather than "\\r\\n" or HTML tag &lt;br&gt;.\n';
+
+
 var term = new IOTerm(document.getElementById('term'));
+term.setColor({
+    text: '#fff86f',
+    background: 'black'
+});
+term.setPrefix(data.prefix);
 term.setCommandHandler((command) => {
     // Replace line feed '\r\n' and '\r' with '\n'.
     command = command.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
     // Escape '<', '>' and '&' to '&lt;', '&gt;' and '&amp;'.
     // Pay attention to the order between highlighting and escaping.
     command = escapeText(command);
-    console.log(command);
+    
     var i = 0;
     var timer = setInterval(() => {
-        term.write(i++ + 'Hello, ' + command);
+        term.write(i++ + 'Hello, ' + command + '\n');
         if (i === 3) {
             clearInterval(timer);
-            term.write(data.prefix);
+            term.end();
         }
-    }, 500);
-})
+    }, 1000);
+});
+
 term.write(welcome);
 term.write(data.prefix);

@@ -1,19 +1,24 @@
 declare function escapeText(strHtml: string): string;
 declare class IOTerm {
     private term;
-    private panel;
+    private container;
+    private htmlPanel;
+    private tmpPanel;
+    private measurement;
     private cursor;
+    private cursorBg;
     private cursorContent;
     private input;
-    private measurement;
     private backgroundColor;
     private textColor;
-    private readonlyLines;
-    private readonlyLastLine;
+    private prefix;
+    private html;
+    private lastLine;
     private numRows;
     private timer;
-    private CHARWIDTH;
-    private CHARHEIGHT;
+    private readonly CHARWIDTH;
+    private readonly CHARHEIGHT;
+    private isRunning;
     private commandHandler;
     constructor(parentElement: HTMLElement);
     private setStyle;
@@ -26,7 +31,9 @@ declare class IOTerm {
         text?: string;
         background?: string;
     }): void;
+    setPrefix(html: string): void;
     setCommandHandler(commandHandler: Function): void;
+    end(): void;
     write(html: string): void;
 }
 export { escapeText, IOTerm };
