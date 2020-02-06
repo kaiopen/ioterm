@@ -45,8 +45,8 @@ class IOTerm {
     private cursorContent: HTMLDivElement;
     private input: HTMLInputElement;
 
-    private backgroundColor: string;
-    private textColor: string;
+    private color: { text: string, background: string };
+    private font: { family: string, size: string };
 
     private prefix: string;
 
@@ -61,6 +61,8 @@ class IOTerm {
     // feed. Even an empty line is a newline.
     private lastLine: string;
 
+    private history: { commands: string[], index: number };
+
     // `numRows` is the number of rows of readonly text including
     // `html` and `lastLine`. A new line is caused by
     // character '\n' or HTML tag <br>. The initial value, 1, means the
@@ -70,8 +72,8 @@ class IOTerm {
     // A timer for flashing cursor.
     private timer: any;
 
-    private readonly CHARWIDTH: number;
-    private readonly CHARHEIGHT: number;
+    private charWidth: number;
+    private charHeight: number;
 
     private isRunning: boolean;
     private commandHandler: Function;
@@ -100,20 +102,15 @@ class IOTerm {
         this.container.append(this.htmlPanel, this.tmpPanel);
 
         // Initialization.
+        this.color = { text: '', background: '' };
+        this.font = { family: '', size: '' };
         this.prefix = '';
         this.html = '';
         this.lastLine = '';
+        this.history = { commands: [''], index: 0 };
         this.numRows = 1;
-        this.backgroundColor = '';
-        this.textColor = '';
 
         this.setStyle();
-
-        this.measurement.innerHTML = '&nbsp;';
-        this.CHARWIDTH = this.measurement.offsetWidth;
-        this.CHARHEIGHT = this.measurement.offsetHeight;
-        this.cursor.style.height = this.CHARHEIGHT + 'px';
-        this.cursorBg.style.height = this.CHARHEIGHT - 2 + 'px';
 
         this.commandHandler = () => {};
 
@@ -185,7 +182,13 @@ class IOTerm {
         this.setColor({
             text: '#eee',
             background: '#2e3436'
-        })
+        });
+
+        this.measurement.innerHTML = '&nbsp;';
+        this.charWidth = this.measurement.offsetWidth;
+        this.charHeight = this.measurement.offsetHeight;
+        this.cursor.style.height = this.charHeight + 'px';
+        this.cursorBg.style.height = this.charHeight - 2 + 'px';
     }
 
     private getLineFeedIndices(text: string) {
@@ -357,8 +360,8 @@ class IOTerm {
         let charHeight: number;
         if (!character) {
             character = '&nbsp;';
-            charWidth = this.CHARWIDTH;
-            charHeight = this.CHARHEIGHT;
+            charWidth = this.charWidth;
+            charHeight = this.charHeight;
         } else {
             this.measurement.innerHTML = character;
             charWidth = this.measurement.offsetWidth;
@@ -394,8 +397,38 @@ class IOTerm {
         }, 500);
     }
 
+    private runCommand(command: string) {
+        this.write(escapeText(command) + '\n');
+        if (!this.isRunning) {
+            this.isRunning = true;
+            this.history.commands.push(command);
+            this.history.index++;
+            this.commandHandler(command);
+        }        
+    }
+
+    private inputText(text: string) {
+        let wrap = this.autoWrap(this.lastLine + escapeText(text));
+        this.tmpPanel.innerHTML = wrap.wrappedHTML;
+
+        let cursorPos = this.input.selectionStart;
+        if (cursorPos === this.input.value.length) {
+            this.moveCursor(this.numRows + wrap.numRows - 1, wrap.colOffset)
+        } else {
+            wrap = this.autoWrap(
+                this.lastLine +
+                escapeText(text.substring(0, cursorPos))
+            )
+            this.moveCursor(
+                this.numRows + wrap.numRows - 1,
+                wrap.colOffset,
+                text.charAt(cursorPos)
+            )
+        }
+    }
+
     private addEventListeners() {
-        this.term.addEventListener('mouseup', () => {
+        this.term.addEventListener('mouseup', (event) => {
             let selectionText = window.getSelection().toString();
             if (selectionText === '') {
                 let scrollTop = this.term.scrollTop;
@@ -408,47 +441,33 @@ class IOTerm {
         this.term.addEventListener('copy', (event) => {
             let selectionText = window.getSelection().toString();
             selectionText = selectionText
-                            .replace(/\r\n/g, '')
-                            .replace(/\r/g, '')
-                            .replace(/\n/g, '');
+                            .replace(/\r\n/g, ' ')
+                            .replace(/\r/g, ' ')
+                            .replace(/\n/g, ' ');
 
             event.clipboardData.setData('text/plain', selectionText);
             event.preventDefault();
         });
 
         this.term.addEventListener('paste', (event) => {
-            let text = event.clipboardData.getData('text');
-            text = text.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
+            let pasteText = event.clipboardData.getData('text');
+            pasteText = pasteText.replace(/\r\n/g, ' ')
+                                 .replace(/\r/g, ' ')
+                                 .replace(/\n/g, ' ');
 
-            let line = text.split('\n')[0];
-            this.write(escapeText(line + '\n'));
-            if (!this.isRunning) {
-                this.isRunning = true;
-                this.commandHandler(line);
-            }
-            
+            let inputText = this.input.value;
+            let cursorPos = this.input.selectionStart;
+            let preText = inputText.substring(0, cursorPos) + pasteText;
+            inputText = preText + inputText.substring(cursorPos);
+            this.input.value = inputText;
+            this.input.setSelectionRange(preText.length, preText.length);
+
+            this.inputText(inputText);
             event.preventDefault();
         });
 
         this.input.addEventListener('input', (event) => {
-            let value = event.target['value'];
-            let wrap = this.autoWrap(this.lastLine + escapeText(value));
-            this.tmpPanel.innerHTML = wrap.wrappedHTML;
-
-            let cursorPos = event.target['selectionStart'];
-            if (cursorPos === value.length) {
-                this.moveCursor(this.numRows + wrap.numRows - 1, wrap.colOffset)
-            } else {
-                wrap = this.autoWrap(
-                    this.lastLine +
-                    escapeText(value.substring(0, cursorPos))
-                )
-                this.moveCursor(
-                    this.numRows + wrap.numRows - 1,
-                    wrap.colOffset,
-                    value.charAt(cursorPos)
-                )
-            }
+            this.inputText((event.target as HTMLInputElement).value);
         });
 
         this.input.addEventListener('blur', () => {
@@ -457,8 +476,8 @@ class IOTerm {
         });
 
         this.input.addEventListener('keydown', (event) => {
-            let value: string;
-            let cursorPos: number;
+            let text: string;
+            let index: number;
             let wrap: {
                 wrappedHTML: string,
                 numRows: number,
@@ -468,59 +487,85 @@ class IOTerm {
             switch (event.keyCode) {
             case 13:  // Enter
                 this.term.scrollTop = this.term.scrollHeight
-                value = (event.target as HTMLInputElement).value;
+                text = (event.target as HTMLInputElement).value;
                 (event.target as HTMLInputElement).value = '';
-                this.write(escapeText(value + '\n'));
-                if (!this.isRunning) {
-                    this.isRunning = true;
-                    this.commandHandler(value);
-                }
+                this.runCommand(text);
                 break;
             case 37:  // Left
-                cursorPos = this.input['selectionEnd'] - 1;
-                if (cursorPos >= 0) {
-                    value = (event.target as HTMLInputElement).value;
+                index = this.input['selectionEnd'] - 1;
+                if (index >= 0) {
+                    text = (event.target as HTMLInputElement).value;
                     wrap = this.autoWrap(
                         this.lastLine +
-                        escapeText(value.substring(0, cursorPos))
+                        escapeText(text.substring(0, index))
                     );
                     this.moveCursor(
                         this.numRows + wrap.numRows - 1,
                         wrap.colOffset,
-                        value.charAt(cursorPos)
+                        text.charAt(index)
                     )
                 }
                 break;
             case 39:  // Right
-                cursorPos = this.input['selectionEnd'] + 1;
-                value = (event.target as HTMLInputElement).value;
-                if (cursorPos <= value.length) {
+                index = this.input['selectionEnd'] + 1;
+                text = (event.target as HTMLInputElement).value;
+                if (index <= text.length) {
                     wrap = this.autoWrap(
                         this.lastLine +
-                        escapeText(value.substring(0, cursorPos))
+                        escapeText(text.substring(0, index))
                     );
                     this.moveCursor(
                         this.numRows + wrap.numRows - 1,
                         wrap.colOffset,
-                        value.charAt(cursorPos)
+                        text.charAt(index)
                     )
                 }
                 break;
+            case 38:  // Up
+                console.log('up');
+                index = this.history.index;
+                if (index != 0) {
+                    this.history.commands[index] = this.input.value;
+                    text = this.history.commands[--this.history.index];
+                    this.input.value = text;
+                    this.inputText(text);
+                }
+                break;
+            case 40:  // Down
+                console.log('down');
+                index = this.history.index;
+                if ((index + 1) != this.history.commands.length) {
+                    this.history.commands[index] = this.input.value;
+                    text = this.history.commands[++this.history.index];
+                    this.input.value = text;
+                    this.inputText(text);
+                }
+                break;
             }
-        })
+        });
     }
 
     public setColor({text, background}: {text?: string, background?: string}) {
         if (text) {
-            this.textColor = text;
+            this.color.text = text;
+            this.term.style.color = text;
+            this.cursorBg.style.backgroundColor = text
         }
         if (background) {
-            this.backgroundColor = background;
+            this.color.background = background;
+            this.term.style.backgroundColor = background;
+            this.cursorContent.style.color = background;
+        } 
+    }
+
+    public setFont({family, size}: {family?: string, size?: string}) {
+        if (family) {
+            this.font.family = family;
         }
-        this.term.style.backgroundColor = this.backgroundColor;
-        this.term.style.color = this.textColor;
-        this.cursorBg.style.backgroundColor = this.textColor;
-        this.cursorContent.style.color = this.backgroundColor;
+        if (size) {
+            this.font.size = size;
+        }
+        // resize
     }
 
     public setPrefix(html: string) {

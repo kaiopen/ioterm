@@ -9,15 +9,16 @@ declare class IOTerm {
     private cursorBg;
     private cursorContent;
     private input;
-    private backgroundColor;
-    private textColor;
+    private color;
+    private font;
     private prefix;
     private html;
     private lastLine;
+    private history;
     private numRows;
     private timer;
-    private readonly CHARWIDTH;
-    private readonly CHARHEIGHT;
+    private charWidth;
+    private charHeight;
     private isRunning;
     private commandHandler;
     constructor(parentElement: HTMLElement);
@@ -26,10 +27,16 @@ declare class IOTerm {
     private autoWrap;
     private moveCursor;
     private flashCursor;
+    private runCommand;
+    private inputText;
     private addEventListeners;
     setColor({ text, background }: {
         text?: string;
         background?: string;
+    }): void;
+    setFont({ family, size }: {
+        family?: string;
+        size?: string;
     }): void;
     setPrefix(html: string): void;
     setCommandHandler(commandHandler: Function): void;
