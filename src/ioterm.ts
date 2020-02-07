@@ -401,8 +401,11 @@ class IOTerm {
         this.write(escapeText(command) + '\n');
         if (!this.isRunning) {
             this.isRunning = true;
-            this.history.commands.push(command);
-            this.history.index++;
+
+            this.history.commands[this.history.commands.length - 1] = command;
+            this.history.index = this.history.commands.length;
+            this.history.commands.push('');
+
             this.commandHandler(command);
         }        
     }
@@ -522,20 +525,16 @@ class IOTerm {
                 }
                 break;
             case 38:  // Up
-                console.log('up');
                 index = this.history.index;
                 if (index != 0) {
-                    this.history.commands[index] = this.input.value;
                     text = this.history.commands[--this.history.index];
                     this.input.value = text;
                     this.inputText(text);
                 }
                 break;
             case 40:  // Down
-                console.log('down');
                 index = this.history.index;
-                if ((index + 1) != this.history.commands.length) {
-                    this.history.commands[index] = this.input.value;
+                if (index != (this.history.commands.length - 1)) {
                     text = this.history.commands[++this.history.index];
                     this.input.value = text;
                     this.inputText(text);
