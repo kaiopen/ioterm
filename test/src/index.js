@@ -38,22 +38,22 @@ term.setColor({
     background: 'black'
 });
 term.setPrefix(data.prefix);
-term.setCommandHandler((command) => {
-    // Replace line feed '\r\n' and '\r' with '\n'.
-    command = command.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
-    // Escape '<', '>' and '&' to '&lt;', '&gt;' and '&amp;'.
-    // Pay attention to the order between highlighting and escaping.
-    command = escapeText(command);
+// term.setCommandHandler((command) => {
+//     // Replace line feed '\r\n' and '\r' with '\n'.
+//     command = command.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
+//     // Escape '<', '>' and '&' to '&lt;', '&gt;' and '&amp;'.
+//     // Pay attention to the order between highlighting and escaping.
+//     command = escapeText(command);
 
-    var i = 0;
-    var timer = setInterval(() => {
-        term.write(i++ + 'Hello, ' + command + '\n');
-        if (i === 3) {
-            clearInterval(timer);
-            term.end();
-        }
-    }, 1000);
-});
+//     var i = 0;
+//     var timer = setInterval(() => {
+//         term.write(i++ + 'Hello, ' + command + '\n');
+//         if (i === 3) {
+//             clearInterval(timer);
+//             term.end();
+//         }
+//     }, 1000);
+// });
 
 term.write(welcome);
 term.write(data.prefix);

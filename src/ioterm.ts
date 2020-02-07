@@ -61,8 +61,6 @@ class IOTerm {
     // feed. Even an empty line is a newline.
     private lastLine: string;
 
-    private history: { commands: string[], index: number };
-
     // `numRows` is the number of rows of readonly text including
     // `html` and `lastLine`. A new line is caused by
     // character '\n' or HTML tag <br>. The initial value, 1, means the
@@ -77,6 +75,11 @@ class IOTerm {
 
     private isRunning: boolean;
     private commandHandler: Function;
+    private tabHandler: Function;
+
+    private history: { commands: string[], index: number };
+
+    private tabCount: number;  // 计数按<Tab>键的次数
 
     constructor(parentElement: HTMLElement) {
         this.term = document.createElement('div');
@@ -112,7 +115,8 @@ class IOTerm {
 
         this.setStyle();
 
-        this.commandHandler = () => {};
+        this.commandHandler = () => { this.end(); };
+        this.tabHandler = () => { return []; };
 
         this.addEventListeners();
 
@@ -540,6 +544,9 @@ class IOTerm {
                     this.inputText(text);
                 }
                 break;
+            case 9:  // Tab
+                console.log('Tab');
+                break;
             }
         });
     }
@@ -573,6 +580,10 @@ class IOTerm {
 
     public setCommandHandler(commandHandler: Function) {
         this.commandHandler = commandHandler;
+    }
+
+    public setTabHandler(tabHandler: Function) {
+        this.tabHandler = tabHandler;
     }
 
     public end() {

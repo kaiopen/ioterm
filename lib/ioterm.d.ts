@@ -14,13 +14,15 @@ declare class IOTerm {
     private prefix;
     private html;
     private lastLine;
-    private history;
     private numRows;
     private timer;
     private charWidth;
     private charHeight;
     private isRunning;
     private commandHandler;
+    private tabHandler;
+    private history;
+    private tabCount;
     constructor(parentElement: HTMLElement);
     private setStyle;
     private getLineFeedIndices;
@@ -40,6 +42,7 @@ declare class IOTerm {
     }): void;
     setPrefix(html: string): void;
     setCommandHandler(commandHandler: Function): void;
+    setTabHandler(tabHandler: Function): void;
     end(): void;
     write(html: string): void;
 }
