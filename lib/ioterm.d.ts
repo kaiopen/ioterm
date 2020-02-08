@@ -4,6 +4,7 @@ declare class IOTerm {
     private container;
     private htmlPanel;
     private tmpPanel;
+    private tabPanel;
     private measurement;
     private cursor;
     private cursorBg;
@@ -29,7 +30,6 @@ declare class IOTerm {
     private autoWrap;
     private moveCursor;
     private flashCursor;
-    private runCommand;
     private inputText;
     private addEventListeners;
     setColor({ text, background }: {

@@ -2,6 +2,11 @@
 // 1 复制时的文本处理（去除<br>导致的空格）；粘贴时对换行符的处理
 // 2 resize
 
+interface historyItem {
+    value: string,
+    modification: string
+}
+
 function escapeText(strHtml: string) {
     // Replace character '<', '>' and '&' to '&lt;', '&gt;' and '&amp;'.
 
@@ -37,6 +42,7 @@ class IOTerm {
     private container: HTMLDivElement;
     private htmlPanel: HTMLPreElement;
     private tmpPanel: HTMLPreElement;
+    private tabPanel: HTMLPreElement;
 
     private measurement: HTMLPreElement;
     // The element `input` moves as soon as the element `cursor` moving.
@@ -77,46 +83,53 @@ class IOTerm {
     private commandHandler: Function;
     private tabHandler: Function;
 
-    private history: { commands: string[], index: number };
+    private history: { index: number, items: historyItem[] };
 
     private tabCount: number;  // 计数按<Tab>键的次数
 
     constructor(parentElement: HTMLElement) {
         this.term = document.createElement('div');
+        this.measurement = document.createElement('pre');
+        this.input = document.createElement('input');
 
         this.container = document.createElement('div');
         this.htmlPanel = document.createElement('pre');
         this.tmpPanel = document.createElement('pre');
-
-        this.measurement = document.createElement('pre');
-
+        
         this.cursor = document.createElement('div');
         this.cursorBg = document.createElement('div');
         this.cursorContent = document.createElement('div');
-        this.input = document.createElement('input');
-
+        
         parentElement.append(this.term);
         this.term.append(
-            this.measurement, 
-            this.cursor, this.input, 
-            this.container
+            this.measurement, this.input,
+            this.container,
+            this.cursor
         );
-        this.cursor.append(this.cursorBg, this.cursorContent);
         this.container.append(this.htmlPanel, this.tmpPanel);
-
+        this.cursor.append(this.cursorBg, this.cursorContent);
+        
         // Initialization.
         this.color = { text: '', background: '' };
         this.font = { family: '', size: '' };
         this.prefix = '';
         this.html = '';
         this.lastLine = '';
-        this.history = { commands: [''], index: 0 };
+        this.history = { 
+            index: 0, 
+            items: [{ value: '', modification: '' }] 
+        };
         this.numRows = 1;
 
         this.setStyle();
 
         this.commandHandler = () => { this.end(); };
-        this.tabHandler = () => { return []; };
+        this.tabHandler = () => { 
+            return [
+                '<span style="color: #729fcf;">.</span>', 
+                '<span style="color: #729fcf;">..</span>'
+            ]; 
+        };
 
         this.addEventListeners();
 
@@ -144,24 +157,6 @@ class IOTerm {
         this.measurement.style.zIndex = '-100';
         this.measurement.style.margin = '0';
 
-        this.cursor.style.position = 'absolute';
-        this.cursor.style.top = '0';
-        this.cursor.style.left = '0';
-        this.cursor.style.display = 'flex';
-        this.cursor.style.alignItems = 'center';
-        this.cursor.style.border = 'none';
-        this.cursor.style.fontSize = '14px';
-        this.cursor.style.fontFamily = 'monospace';
-        this.cursor.style.lineHeight = '1.5';
-        this.cursor.style.opacity = '1';
-
-        this.cursorBg.style.width = '100%';
-
-        this.cursorContent.style.position = 'absolute';
-        this.cursorContent.style.top = '0';
-        this.cursorContent.style.left = '0';
-        this.cursorContent.style.height = '100%';
-
         this.input.style.position = 'absolute';
         this.input.style.top = '0';
         this.input.style.left = '0';
@@ -183,6 +178,24 @@ class IOTerm {
         this.tmpPanel.style.width = '100%';
         this.tmpPanel.style.margin = '0';
 
+        this.cursor.style.position = 'absolute';
+        this.cursor.style.top = '0';
+        this.cursor.style.left = '0';
+        this.cursor.style.display = 'flex';
+        this.cursor.style.alignItems = 'center';
+        this.cursor.style.border = 'none';
+        this.cursor.style.fontSize = '14px';
+        this.cursor.style.fontFamily = 'monospace';
+        this.cursor.style.lineHeight = '1.5';
+        this.cursor.style.opacity = '1';
+
+        this.cursorBg.style.width = '100%';
+
+        this.cursorContent.style.position = 'absolute';
+        this.cursorContent.style.top = '0';
+        this.cursorContent.style.left = '0';
+        this.cursorContent.style.height = '100%';
+        
         this.setColor({
             text: '#eee',
             background: '#2e3436'
@@ -401,19 +414,6 @@ class IOTerm {
         }, 500);
     }
 
-    private runCommand(command: string) {
-        this.write(escapeText(command) + '\n');
-        if (!this.isRunning) {
-            this.isRunning = true;
-
-            this.history.commands[this.history.commands.length - 1] = command;
-            this.history.index = this.history.commands.length;
-            this.history.commands.push('');
-
-            this.commandHandler(command);
-        }        
-    }
-
     private inputText(text: string) {
         let wrap = this.autoWrap(this.lastLine + escapeText(text));
         this.tmpPanel.innerHTML = wrap.wrappedHTML;
@@ -447,34 +447,42 @@ class IOTerm {
 
         this.term.addEventListener('copy', (event) => {
             let selectionText = window.getSelection().toString();
-            selectionText = selectionText
-                            .replace(/\r\n/g, ' ')
-                            .replace(/\r/g, ' ')
-                            .replace(/\n/g, ' ');
+            if (selectionText) {
+                selectionText = selectionText
+                                .replace(/\r\n/g, ' ')
+                                .replace(/\r/g, ' ')
+                                .replace(/\n/g, ' ');
 
-            event.clipboardData.setData('text/plain', selectionText);
+                event.clipboardData.setData('text/plain', selectionText);
+            }
             event.preventDefault();
         });
 
         this.term.addEventListener('paste', (event) => {
             let pasteText = event.clipboardData.getData('text');
-            pasteText = pasteText.replace(/\r\n/g, ' ')
-                                 .replace(/\r/g, ' ')
-                                 .replace(/\n/g, ' ');
+            if (pasteText) {
+                pasteText = pasteText.replace(/\r\n/g, ' ')
+                                     .replace(/\r/g, ' ')
+                                     .replace(/\n/g, ' ');
 
-            let inputText = this.input.value;
-            let cursorPos = this.input.selectionStart;
-            let preText = inputText.substring(0, cursorPos) + pasteText;
-            inputText = preText + inputText.substring(cursorPos);
-            this.input.value = inputText;
-            this.input.setSelectionRange(preText.length, preText.length);
+                let text = this.input.value;
+                let cursorPos = this.input.selectionStart;
+                let preText = text.substring(0, cursorPos) + pasteText;
+                text = preText + text.substring(cursorPos);
+                this.input.value = text;
+                this.input.setSelectionRange(preText.length, preText.length);
 
-            this.inputText(inputText);
+                this.history.items[this.history.index].modification = text;
+
+                this.inputText(text);
+            }
             event.preventDefault();
         });
 
         this.input.addEventListener('input', (event) => {
-            this.inputText((event.target as HTMLInputElement).value);
+            let text = (event.target as HTMLInputElement).value;
+            this.history.items[this.history.index].modification = text;
+            this.inputText(text);
         });
 
         this.input.addEventListener('blur', () => {
@@ -490,14 +498,43 @@ class IOTerm {
                 numRows: number,
                 colOffset: number
             }
+            let item: historyItem;
 
             switch (event.keyCode) {
             case 13:  // Enter
                 this.term.scrollTop = this.term.scrollHeight
                 text = (event.target as HTMLInputElement).value;
                 (event.target as HTMLInputElement).value = '';
-                this.runCommand(text);
+                text = text.trim();
+                if (text) {
+                    this.write(escapeText(text) + '\n');
+
+                    if (!this.isRunning) {
+                        this.isRunning = true;
+            
+                        index = this.history.index;
+                        let len = this.history.items.length;
+                        this.history.items[len - 1].value = text;
+                        this.history.items[index].modification = '';
+                        this.history.index = len;
+                        this.history.items.push({ 
+                            value: '', 
+                            modification: '' 
+                        });
+            
+                        this.commandHandler(text);
+                    }                    
+                } else {
+                    this.write('\n');
+                    let lastIndex = this.history.items.length - 1;
+                    this.history.items[lastIndex].modification = '';
+                    this.history.index = lastIndex;
+                    this.end();
+                }
+
                 break;
+
+            // Moving the cursor.
             case 37:  // Left
                 index = this.input['selectionEnd'] - 1;
                 if (index >= 0) {
@@ -528,22 +565,35 @@ class IOTerm {
                     )
                 }
                 break;
+
+            // History.
             case 38:  // Up
-                index = this.history.index;
-                if (index != 0) {
-                    text = this.history.commands[--this.history.index];
+                index = this.history.index - 1;
+                item = this.history.items[index];
+                if (item) {
+                    this.history.index = index;
+                    text = item.modification;
+                    if (!text) {
+                        text = item.value;
+                    }
                     this.input.value = text;
-                    this.inputText(text);
+                    this.inputText(text);                    
                 }
                 break;
             case 40:  // Down
-                index = this.history.index;
-                if (index != (this.history.commands.length - 1)) {
-                    text = this.history.commands[++this.history.index];
+                index = this.history.index + 1;
+                item = this.history.items[index];
+                if (item) {
+                    this.history.index = index;
+                    text = this.history.items[index].modification;
+                    if (!text) {
+                        text = item.value;
+                    }
                     this.input.value = text;
                     this.inputText(text);
                 }
                 break;
+
             case 9:  // Tab
                 console.log('Tab');
                 break;
