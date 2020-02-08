@@ -56,15 +56,8 @@ class IOTerm {
 
     private prefix: string;
 
-    // `html` consists of highlighted readonly text excluding the
-    // last line which does not end with a line feed and is saved in
-    // `lastLine`. In other words, `html` ends with a line
-    // feed '\n' or <br>. The editable text, the value of input element, does
-    // not saved unless it becomes readonly.
-    private html: string;
-
-    // `lastLine` saves the last line which does not end with a line
-    // feed. Even an empty line is a newline.
+    // `lastLine` saves the last lighlighted readonly line which does not end 
+    // with a line feed. Even an empty line is a newline.
     private lastLine: string;
 
     // `numRows` is the number of rows of readonly text including
@@ -113,7 +106,6 @@ class IOTerm {
         this.color = { text: '', background: '' };
         this.font = { family: '', size: '' };
         this.prefix = '';
-        this.html = '';
         this.lastLine = '';
         this.history = { 
             index: 0, 
@@ -531,7 +523,6 @@ class IOTerm {
                     this.history.index = lastIndex;
                     this.end();
                 }
-
                 break;
 
             // Moving the cursor.
@@ -636,11 +627,6 @@ class IOTerm {
         this.tabHandler = tabHandler;
     }
 
-    public end() {
-        this.isRunning = false;
-        this.write(this.prefix);
-    }
-
     public write(html: string) {
         // `html` is a escaped and highlighted string that uses HTML tag <span>
         // wrapping around the text that should be highlighted and character
@@ -665,12 +651,13 @@ class IOTerm {
         let lastIdx = lines.length - 1;
         let wrappedLine: string;
         let wrap: { wrappedHTML: string, numRows: number, colOffset: number }
-
+        let wrappedHTML = this.htmlPanel.innerHTML;
+        
         this.numRows--;
         if (lastIdx > 0) {
             for (let i = 0; i < lastIdx; i++) {
                 wrap = this.autoWrap(lines[i]);
-                this.html += wrap.wrappedHTML + '\n';
+                wrappedHTML += wrap.wrappedHTML + '\n';
                 this.numRows += wrap.numRows;
             }
         }
@@ -684,15 +671,33 @@ class IOTerm {
             this.lastLine = wrappedLine;
         } else {
             lastIdx += 4;
-            this.html += wrappedLine.substring(0, lastIdx);
+            wrappedHTML += wrappedLine.substring(0, lastIdx);
             this.lastLine = wrappedLine.substring(lastIdx);
         }
-        this.htmlPanel.innerHTML = this.html;
+        this.htmlPanel.innerHTML = wrappedHTML;
         this.tmpPanel.innerHTML = this.lastLine;
         this.moveCursor(this.numRows, wrap.colOffset);
 
         if (isScroll) {
             this.term.scrollTop = this.term.scrollHeight;
+        }
+    }
+
+    public end() {
+        this.isRunning = false;
+        this.write(this.prefix);
+    }
+
+    public refresh() {
+        let html = this.htmlPanel.innerHTML + this.lastLine;
+        this.htmlPanel.innerHTML = '';
+        this.lastLine = '';
+        html = html.replace(/<br>/g, '');
+        this.write(html);
+
+        let text = this.input.value;
+        if (text) {
+            this.inputText(text);
         }
     }
 }
