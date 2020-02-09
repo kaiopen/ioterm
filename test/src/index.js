@@ -20,8 +20,8 @@ function updatePrefix({ env, user, server, pwd }) {
 
 document.getElementById('seResizeBtn').addEventListener('click', (event) => {
     var element = document.getElementById('term');
-    element.style.width = element.offsetWidth + 100 + 'px';
-    element.style.height = element.offsetHeight + 50 + 'px';
+    element.style.width = element.offsetWidth + 50 + 'px';
+    element.style.height = element.offsetHeight + 10 + 'px';
     term.resize();
 });
 
@@ -32,6 +32,9 @@ var term = new IOTerm(document.getElementById('term'));
 term.setColor({
     text: '#fff86f',
     background: 'black'
+});
+term.setFont({
+    size: '12px'
 });
 term.setPrefix(updatePrefix({}));
 term.setCommandHandler((command) => {
