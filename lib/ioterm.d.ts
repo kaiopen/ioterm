@@ -1,29 +1,19 @@
 declare function escapeText(strHtml: string): string;
 declare class IOTerm {
     private term;
+    private container;
     private measurement;
     private input;
-    private container;
-    private htmlPanel;
-    private tmpPanel;
+    private main;
     private cursor;
-    private cursorBg;
-    private cursorContent;
-    private prefix;
-    private lastLine;
-    private numRows;
-    private history;
-    private charWidth;
-    private charHeight;
-    private timer;
+    private minChar;
     private isRunning;
     private commandHandler;
-    private tabPanel;
-    private promptIndex;
-    private tabHandler;
+    private history;
+    private tab;
     constructor(parentElement: HTMLElement);
     end(): void;
-    resize(): void;
+    refresh(): void;
     setColor({ text, background }: {
         text?: string;
         background?: string;
@@ -44,9 +34,7 @@ declare class IOTerm {
     write(html: string): void;
     private addEventListeners;
     private autoWrap;
-    private clearPanel;
     private enableInput;
-    private flashCursor;
     private getLineFeedIndices;
     private inputText;
     private moveCursor;

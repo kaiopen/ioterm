@@ -26,6 +26,11 @@ document.getElementById('seResizeBtn').addEventListener('click', (event) => {
 });
 
 var term = new IOTerm(document.getElementById('term'));
+term.setPadding({
+    top: '2px',
+    left: '5px',
+    bottom: '2px'
+});
 term.setColor({
     text: '#fff86f',
     background: 'black'
@@ -33,6 +38,8 @@ term.setColor({
 term.setFont({
     size: '12px'
 });
+// Remember to refresh the IOTerm after setting the font via function `term.refresh()`, especially there are some words shown.
+
 term.setPrefix(updatePrefix({}));
 term.setCommandHandler((command) => {
     // Replace line feed '\r\n' and '\r' with '\n'.

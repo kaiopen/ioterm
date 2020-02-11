@@ -1,7 +1,3 @@
-// TODO:
-// 1 复制时的文本处理（去除<br>导致的空格）；粘贴时对换行符的处理
-// 2 resize
-
 interface historyItem {
     value: string,
     modification: string
@@ -18,109 +14,245 @@ function escapeText(strHtml: string) {
     );
 }
 
-class IOTerm {
-    private term: HTMLDivElement;
-    private measurement: HTMLPreElement;
-    private input: HTMLInputElement;
+function getScrollWidth() {
+    const container = document.createElement('div');
+    container.style.position = 'absolute';
+    container.style.width = '100px';
+    container.style.overflow = 'scroll';
 
-    // The element `htmlPanel` shows `html` and `tmpPanel` shows others.
-    private container: HTMLDivElement;
-    private htmlPanel: HTMLPreElement;
-    private tmpPanel: HTMLPreElement;
+    const content = document.createElement('div');
+    content.style.width = '100%';
 
-    // The element `input` moves as soon as the element `cursor` moving.
-    private cursor: HTMLDivElement;
-    private cursorBg: HTMLDivElement;
-    private cursorContent: HTMLDivElement;
+    document.body.append(container);
+    container.append(content);
+    const scrollWidth = container.offsetWidth - content.offsetWidth;
+    content.remove();
+    container.remove();
+    return scrollWidth;
+}
 
-    private prefix: string;
+class Main {
+    public container: HTMLDivElement;
 
-    // `lastLine` saves the last lighlighted readonly line which does not end 
-    // with a line feed. Even an empty line is a newline.
-    private lastLine: string;
+    // The element `panel` shows readonly content and `tmpPanel` shows others.
+    public panel: HTMLPreElement;
+    public tmpPanel: HTMLPreElement;
+    public prefix: string;
 
-    // `numRows` is the number of rows of readonly text including
-    // `html` and `lastLine`. A new line is caused by
-    // character '\n' or HTML tag <br>. The initial value, 1, means the
-    // `lastLine` even empty.
-    private numRows: number;
+    // `lastLine` saves the last lighlighted readonly line which does not end
+    // with a line feed.
+    public lastLine: string;
 
-    private history: { index: number, items: historyItem[] };
-    
-    private charWidth: number;
-    private charHeight: number;
-
-    // A timer for flashing cursor.
-    private timer: any;
-
-    private isRunning: boolean;
-
-    private commandHandler: Function;
-
-    private tabPanel: HTMLDivElement;
-    private promptIndex: number;  // 计数按<Tab>键的次数
-    private tabHandler: Function;
+    // `numRows` is the number of rows of readonly text including `lastLine`.
+    // A new line is caused by character '\n' or HTML tag <br>.
+    // The initial value, 1, means the `lastLine` even empty.
+    public numRows: number;
 
     constructor(parentElement: HTMLElement) {
-        this.term = document.createElement('div');
-        this.measurement = document.createElement('pre');
-        this.input = document.createElement('input');
-
         this.container = document.createElement('div');
-        this.htmlPanel = document.createElement('pre');
+        this.panel = document.createElement('pre');
         this.tmpPanel = document.createElement('pre');
-        
-        this.tabPanel = document.createElement('div');
-        
-        this.cursor = document.createElement('div');
-        this.cursorBg = document.createElement('div');
-        this.cursorContent = document.createElement('div');
-        
-        parentElement.append(this.term);
-        this.term.append(
-            this.measurement, this.input,
-            this.container,
-            this.tabPanel,
-            this.cursor
-        );
-        this.container.append(this.htmlPanel, this.tmpPanel);
-        this.cursor.append(this.cursorBg, this.cursorContent);
-        
         this.prefix = '';
         this.lastLine = '';
         this.numRows = 1;
-        this.history = { 
-            index: 0, 
-            items: [{ value: '', modification: '' }] 
-        };
-        this.commandHandler = () => { this.end(); };
-        this.promptIndex = -1;
-        this.tabHandler = () => { 
+        parentElement.append(this.container);
+        this.container.append(this.panel, this.tmpPanel);
+        this.setStyle();
+    }
+
+    public clear() {
+        this.panel.innerHTML = '';
+        this.tmpPanel.innerHTML = '';
+        this.lastLine = '';
+        this.numRows = 1;
+    }
+
+    private setStyle() {
+        this.container.style.width = '100%';
+        this.container.style.height = '100%';
+        this.panel.style.width = '100%';
+        this.panel.style.margin = '0';
+        this.tmpPanel.style.width = '100%';
+        this.tmpPanel.style.margin = '0';
+    }
+}
+
+class Cursor {
+    public container: HTMLDivElement;
+    public background: HTMLDivElement;
+    public content: HTMLDivElement;
+    private timer: any;
+
+    constructor(parentElement: HTMLElement) {
+        this.container = document.createElement('div');
+        this.background = document.createElement('div');
+        this.content = document.createElement('div');
+        parentElement.append(this.container);
+        this.container.append(this.background, this.content);
+        this.setStyle();
+    }
+
+    public flash() {
+        clearInterval(this.timer);
+        this.container.style.opacity = '1';
+        let i = 1;
+        this.timer = setInterval(() => {
+            this.container.style.opacity = i++ % 2 ? '0': '1';
+            i === 7 && (clearInterval(this.timer));
+        }, 500);
+    }
+
+    public move(top: number, left: number, width: number, html?: string) {
+        this.container.style.top = top + 'px';
+        this.container.style.left = left + 'px';
+        if (html === void 0) {
+            html = '&nbsp;';
+        }
+        this.container.style.width = width + 'px';
+        this.content.innerHTML = html;
+    }
+
+    private setStyle() {
+        this.container.style.position = 'absolute';
+        this.container.style.top = '0';
+        this.container.style.left = '0';
+        this.container.style.display = 'flex';
+        this.container.style.alignItems = 'center';
+        this.container.style.border = 'none';
+        this.background.style.width = '100%';
+        this.content.style.position = 'absolute';
+        this.content.style.top = '0';
+        this.content.style.left = '0';
+        this.content.style.height = '100%';
+    }
+}
+
+class Tab {
+    public container: HTMLDivElement;
+    public panel: HTMLDivElement;
+    public count: number;
+    public handler: Function;
+
+    private scrollContainer: HTMLDivElement;
+
+    constructor(parentElement: HTMLElement) {
+        this.container = document.createElement('div');
+        this.panel = document.createElement('div');
+        this.scrollContainer = document.createElement('div');
+        this.count = 0;
+        this.handler = () => {
             return [
-                '<span style="color: #729fcf;">.</span>', 
-                '<span style="color: #729fcf;">..</span>',
-                '<span style="color: #729fcf;">abcd</span>'
-            ]; 
+                '<span style="color: #729fcf;">.</span>',
+                '<span style="color: #729fcf;">..</span>'
+            ];
         };
+        parentElement.append(this.container);
+        this.container.append(this.scrollContainer);
+        this.scrollContainer.append(this.panel);
+        this.setStyle();
+    }
+
+    public clear() {
+        this.count = 0;
+        this.panel.innerHTML = '';
+    }
+
+    public createItem(prompt: string) {
+        let item = document.createElement('div');
+        item.style.display = 'inline-block';
+        item.style.height = '100%';
+        item.style.paddingRight = '10px';
+        item.innerHTML = prompt;
+        this.panel.append(item);
+    }
+
+    private setStyle() {
+        this.container.style.position = 'absolute';
+        this.container.style.top = '100px';
+        this.container.style.left = '5px';
+        this.container.style.right = '5px';
+        this.container.style.height = '3em';
+        this.container.style.overflow = 'hidden';
+
+        this.scrollContainer.style.position = 'absolute';
+        this.scrollContainer.style.top = '0';
+        this.scrollContainer.style.bottom = 0 - getScrollWidth() + 'px';
+        this.scrollContainer.style.width = '100%';
+        this.scrollContainer.style.overflowX = 'scroll';
+        this.scrollContainer.style.overflowY = 'hidden';
+
+        this.panel.style.width = '100%';
+        this.panel.style.height = '3em';
+        this.panel.style.boxSizing = 'border-box';
+        this.panel.style.paddingLeft = '10px';
+        this.panel.style.paddingRight = '10px';
+        this.panel.style.backgroundColor = 'rgba(255, 255, 255, 0.2)';
+        this.panel.style.lineHeight = '3em';
+    }
+}
+
+class IOTerm {
+    private term: HTMLDivElement;
+    private container: HTMLDivElement;
+    private measurement: HTMLPreElement;
+    private input: HTMLInputElement;
+    private main: Main;
+    private cursor: Cursor;
+    private  minChar: {
+        width: number,
+        height: number
+    };
+    private isRunning: boolean;
+    private commandHandler: Function;
+    private history: {
+        index: number,
+        items: historyItem[]
+    };
+    private tab: Tab;
+
+    constructor(parentElement: HTMLElement)
+    {
+        this.term = document.createElement('div');
+        this.container = document.createElement('div');
+        this.measurement = document.createElement('pre');
+        this.input = document.createElement('input');
+        parentElement.append(this.term);
+        this.term.append(this.container, this.measurement);
+        this.container.append(this.input);
+
+        this.main = new Main(this.container);
+        this.cursor = new Cursor(this.container);
+        this.minChar = {
+            width: 0,
+            height: 0
+        };
+        this.isRunning = false;
+        this.commandHandler = () => { this.end(); };
+        this.history = {
+            index: 0,
+            items: [{ value: '', modification: '' }]
+        };
+        this.tab = new Tab(this.container);
 
         this.setStyle();
         this.addEventListeners();
-        this.moveCursor(this.numRows, 0);
+        this.enableInput();
+        this.moveCursor(this.main.numRows, 0);
     }
 
     public end() {
         this.isRunning = false;
-        this.write(this.prefix);
+        this.write(this.main.prefix);
     }
 
-    public resize() {
+    public refresh() {
         let text = this.input.value;
         let cursorPos = this.input.selectionStart;
-        this.input.value = ''; 
+        this.input.value = '';
 
-        let html = this.htmlPanel.innerHTML + this.lastLine;
+        let html = this.main.panel.innerHTML + this.main.lastLine;
         html = html.replace(/<br>/g, '');
-        this.clearPanel();
+        this.main.clear();
         this.write(html);
 
         if (text) {
@@ -129,11 +261,11 @@ class IOTerm {
             this.input.setSelectionRange(cursorPos, cursorPos);
 
             let wrap = this.autoWrap(
-                this.lastLine +
+                this.main.lastLine +
                 escapeText(text.substring(0, cursorPos))
             );
             this.moveCursor(
-                this.numRows + wrap.numRows - 1,
+                this.main.numRows + wrap.numRows - 1,
                 wrap.colOffset,
                 text.charAt(cursorPos)
             )
@@ -145,20 +277,19 @@ class IOTerm {
     public setColor({text, background}: {text?: string, background?: string}) {
         if (text) {
             this.term.style.color = text;
-            this.cursorBg.style.backgroundColor = text
-            this.tabPanel.style.color = text;
+            this.cursor.background.style.backgroundColor = text;
         }
         if (background) {
             this.term.style.backgroundColor = background;
-            this.cursorContent.style.color = background;
-        } 
+            this.cursor.content.style.color = background;
+        }
     }
 
     public setCommandHandler(commandHandler: Function) {
         this.commandHandler = commandHandler;
     }
 
-    public setFont({family, size}: {family?: string, size?: string}) {       
+    public setFont({family, size}: {family?: string, size?: string}) {
         if (family) {
             this.term.style.fontFamily = family;
             this.input.style.fontFamily = family;
@@ -169,42 +300,38 @@ class IOTerm {
         }
 
         this.measurement.innerHTML = '&nbsp;';
-        this.charWidth = this.measurement.offsetWidth;
-        this.charHeight = this.measurement.offsetHeight;
-        this.cursor.style.height = this.charHeight + 'px';
-        this.cursorBg.style.height = this.charHeight - 2 + 'px';
-
-        this.resize();
+        this.minChar.width = this.measurement.offsetWidth;
+        this.minChar.height = this.measurement.offsetHeight;
+        this.cursor.container.style.height = this.minChar.height + 'px';
+        this.cursor.background.style.height = this.minChar.height - 2 + 'px';
     }
 
     public setPadding({top, right, bottom, left}: {
-        top?: string, 
-        right?: string, 
-        bottom?: string, 
+        top?: string,
+        right?: string,
+        bottom?: string,
         left?: string
     }) {
         if (top !== void 0) {
-            this.htmlPanel.style.marginTop = top;
+            this.container.style.marginTop = top;
         }
         if (right !== void 0) {
-            this.htmlPanel.style.marginRight = right;
-            this.tmpPanel.style.marginRight = right;
+            this.container.style.marginRight = right;
         }
         if (bottom !== void 0) {
-            this.tmpPanel.style.marginBottom = bottom;
+            this.container.style.marginBottom = bottom;
         }
         if (left !== void 0) {
-            this.htmlPanel.style.marginLeft = left;
-            this.tmpPanel.style.marginLeft = left;
+            this.container.style.marginLeft = left;
         }
     }
 
     public setPrefix(html: string) {
-        this.prefix = html;
+        this.main.prefix = html;
     }
 
     public setTabHandler(tabHandler: Function) {
-        this.tabHandler = tabHandler;
+        this.tab.handler = tabHandler;
     }
 
     public write(html: string) {
@@ -228,39 +355,39 @@ class IOTerm {
             isScroll = true;
         }
 
-        html = this.lastLine + this.input.value + html;
+        html = this.main.lastLine + this.input.value + html;
         this.input.value = '';
 
         let lines = html.split('\n');
         let lastIdx = lines.length - 1;
         let wrappedLine: string;
         let wrap: { wrappedHTML: string, numRows: number, colOffset: number }
-        let wrappedHTML = this.htmlPanel.innerHTML;
-        
-        this.numRows--;
+        let wrappedHTML = this.main.panel.innerHTML;
+
+        this.main.numRows--;
         if (lastIdx > 0) {
             for (let i = 0; i < lastIdx; i++) {
                 wrap = this.autoWrap(lines[i]);
                 wrappedHTML += wrap.wrappedHTML + '\n';
-                this.numRows += wrap.numRows;
+                this.main.numRows += wrap.numRows;
             }
         }
 
         wrap = this.autoWrap(lines[lastIdx])
         wrappedLine = wrap.wrappedHTML;
-        this.numRows += wrap.numRows;
+        this.main.numRows += wrap.numRows;
 
         lastIdx = wrappedLine.lastIndexOf('<br>');
         if (lastIdx === -1) {
-            this.lastLine = wrappedLine;
+            this.main.lastLine = wrappedLine;
         } else {
             lastIdx += 4;
             wrappedHTML += wrappedLine.substring(0, lastIdx);
-            this.lastLine = wrappedLine.substring(lastIdx);
+            this.main.lastLine = wrappedLine.substring(lastIdx);
         }
-        this.htmlPanel.innerHTML = wrappedHTML;
-        this.tmpPanel.innerHTML = this.lastLine;
-        this.moveCursor(this.numRows, wrap.colOffset);
+        this.main.panel.innerHTML = wrappedHTML;
+        this.main.tmpPanel.innerHTML = this.main.lastLine;
+        this.moveCursor(this.main.numRows, wrap.colOffset);
 
         if (isScroll) {
             this.term.scrollTop = this.term.scrollHeight;
@@ -273,7 +400,7 @@ class IOTerm {
             if (selectionText === '') {
                 let scrollTop = this.term.scrollTop;
                 this.enableInput();
-                this.flashCursor();
+                this.cursor.flash();
                 this.term.scrollTop = scrollTop;
             }
         });
@@ -319,8 +446,8 @@ class IOTerm {
         });
 
         this.input.addEventListener('blur', () => {
-            clearInterval(this.timer);
-            this.cursor.style.visibility = 'hidden';
+            // clearInterval(this.timer);
+            this.cursor.container.style.visibility = 'hidden';
             this.input.disabled = true;
         });
 
@@ -341,30 +468,29 @@ class IOTerm {
                 this.input.value = '';
                 if (text) {
                     this.write(escapeText(text) + '\n');
-
-                    if (!this.isRunning) {
-                        this.isRunning = true;
-            
-                        index = this.history.index;
-                        let len = this.history.items.length;
-                        this.history.items[len - 1].value = text;
-                        this.history.items[index].modification = '';
-                        this.history.index = len;
-                        this.history.items.push({ 
-                            value: '', 
-                            modification: '' 
-                        });
-            
-                        this.commandHandler(text);
-                    }                    
+                    if (this.isRunning) {
+                        break;
+                    }
+                    this.isRunning = true;
+                    index = this.history.index;
+                    let len = this.history.items.length;
+                    this.history.items[len - 1].value = text;
+                    this.history.items[index].modification = '';
+                    this.history.index = len;
+                    this.history.items.push({
+                        value: '',
+                        modification: ''
+                    });
+                    this.commandHandler(text);
                 } else {
                     this.write('\n');
-                    if (!this.isRunning) {
-                        let lastIndex = this.history.items.length - 1;
-                        this.history.items[lastIndex].modification = '';
-                        this.history.index = lastIndex;
-                        this.end();                        
+                    if (this.isRunning) {
+                        break;
                     }
+                    let lastIndex = this.history.items.length - 1;
+                    this.history.items[lastIndex].modification = '';
+                    this.history.index = lastIndex;
+                    this.end();
                 }
                 break;
 
@@ -374,11 +500,11 @@ class IOTerm {
                 if (index >= 0) {
                     text = this.input.value;
                     wrap = this.autoWrap(
-                        this.lastLine +
+                        this.main.lastLine +
                         escapeText(text.substring(0, index))
                     );
                     this.moveCursor(
-                        this.numRows + wrap.numRows - 1,
+                        this.main.numRows + wrap.numRows - 1,
                         wrap.colOffset,
                         text.charAt(index)
                     )
@@ -389,11 +515,11 @@ class IOTerm {
                 text = this.input.value;
                 if (index <= text.length) {
                     wrap = this.autoWrap(
-                        this.lastLine +
+                        this.main.lastLine +
                         escapeText(text.substring(0, index))
                     );
                     this.moveCursor(
-                        this.numRows + wrap.numRows - 1,
+                        this.main.numRows + wrap.numRows - 1,
                         wrap.colOffset,
                         text.charAt(index)
                     )
@@ -411,7 +537,7 @@ class IOTerm {
                         text = item.value;
                     }
                     this.input.value = text;
-                    this.inputText(text);                    
+                    this.inputText(text);
                 }
                 break;
             case 40:  // Down
@@ -429,26 +555,32 @@ class IOTerm {
                 break;
 
             case 9:  // Tab
-                console.log('Tab');
-                if (this.promptIndex === -1) {
-                    let prompts = this.tabHandler(this.input.value.trim());
-                    let prompt: string;
-                    for (let i = ++this.promptIndex; 
-                         (i < this.promptIndex + 4) && (i < prompts.length); 
-                         i++
-                    ) {
-                        prompt = prompts[i];
-                        let item = document.createElement('div');
-                        item.style.display = 'inline-block';
-                        item.style.height = '100%';
-                        item.style.paddingLeft = '10px';
-                        item.style.paddingRight = '10px';
-                        item.innerHTML = i + '. ' +prompt;
-                        this.tabPanel.append(item);
+                let count = this.tab.count;
+                let tabItem: HTMLDivElement;
+                if (count === 0) {
+                    let prompts = this.tab.handler(this.input.value.trim());
+                    for (let i = 0; i < prompts.length; i++) {
+                        this.tab.createItem(prompts[i]);
                     }
-                    this.promptIndex++;
                 }
+                if (count !== 0) {
+                    tabItem = (
+                        this.tab.panel.children[count - 1] as HTMLDivElement);
+                    tabItem.style.backgroundColor = 'transparent';
+                }
+                tabItem = (this.tab.panel.children[count] as HTMLDivElement);
+                if (tabItem) {
+                    this.tab.count = count + 1;
+                } else {
+                    tabItem = (this.tab.panel.children[0] as HTMLDivElement);
+                    this.tab.count = 1;
+                }
+                tabItem.style.backgroundColor = 'rgba(255, 255, 255, 0.2)';
+                event.preventDefault();
                 break;
+            case 27:  // ESC
+                console.log('ESC');
+                this.tab.clear();
             }
         });
     }
@@ -525,29 +657,10 @@ class IOTerm {
         };
     }
 
-    private clearPanel() {
-        this.htmlPanel.innerHTML = '';
-        this.tmpPanel.innerHTML = '';
-        this.lastLine = '';
-        this.numRows = 1; 
-    }
-    
     private enableInput() {
         this.input.disabled = false;
         this.input.focus();
-        this.cursor.style.visibility = 'visible';
-    }
-
-    private flashCursor() {
-        // Flash the cursor three times.
-
-        clearInterval(this.timer);
-        this.cursor.style.opacity = '1';
-        let i = 1;
-        this.timer = setInterval(() => {
-            this.cursor.style.opacity = i++ % 2 ? '0': '1';
-            i === 7 && (clearInterval(this.timer));
-        }, 500);
+        this.cursor.container.style.visibility = 'visible';
     }
 
     private getLineFeedIndices(text: string) {
@@ -563,7 +676,7 @@ class IOTerm {
         // `startIdx` is the starting index of string `subText` in string
         // `text`.
         let startIdx = 0;
-        let maxWidth = this.htmlPanel.offsetWidth;
+        let maxWidth = this.main.panel.offsetWidth;
         let lfIds: number[] = [];
 
         let subText: string;
@@ -579,59 +692,59 @@ class IOTerm {
             subText = text.substring(startIdx);
             this.measurement.innerHTML = escapeText(subText);
             subTextWidth = this.measurement.offsetWidth;
-            if (subTextWidth > maxWidth) {
-                // `endIdx` computed here is a rough index where to insert a
-                // linefeed in string `subText`. And it is also the number of
-                // characters.
-                endIdx = Math.floor(subText.length * maxWidth / subTextWidth);
+            if (subTextWidth <= maxWidth) {
+                break;
+            }
 
-                // For an exact index, it is necessary to compare the
-                // relationship between the rough index and its consecutive
-                // indices.
-                preState = 0;
-                while (true) {
-                    // line = text.substring(startIdx, startIdx + endIdx);
-                    line = subText.substring(0, endIdx);
-                    this.measurement.innerHTML = escapeText(line);
-                    lineWidth = this.measurement.offsetWidth;
-                    if (lineWidth === maxWidth) {
-                        // `endIdx` here is the exact index where to insert a
-                        // linefeed in string `subText'. Also, `startIdx`
-                        // computed here is an exact index where to insert a
-                        // linefeed in string `text`.
+            // `endIdx` computed here is a rough index where to insert a
+            // linefeed in string `subText`. And it is also the number of
+            // characters.
+            endIdx = Math.floor(subText.length * maxWidth / subTextWidth);
+
+            // For an exact index, it is necessary to compare the
+            // relationship between the rough index and its consecutive
+            // indices.
+            preState = 0;
+            while (true) {
+                // line = text.substring(startIdx, startIdx + endIdx);
+                line = subText.substring(0, endIdx);
+                this.measurement.innerHTML = escapeText(line);
+                lineWidth = this.measurement.offsetWidth;
+                if (lineWidth === maxWidth) {
+                    // `endIdx` here is the exact index where to insert a
+                    // linefeed in string `subText'. Also, `startIdx`
+                    // computed here is an exact index where to insert a
+                    // linefeed in string `text`.
+                    startIdx += endIdx;
+                    lfIds.push(startIdx);
+                    break;
+                } else if (lineWidth < maxWidth) {
+                    // If a string consists of some narrow characters at
+                    // the beginning and wide characters at end, such as
+                    // '1234一二三四', the rough index will be smaller.
+                    if (preState > 0) {
                         startIdx += endIdx;
                         lfIds.push(startIdx);
                         break;
-                    } else if (lineWidth < maxWidth) {
-                        // If a string consists of some narrow characters at
-                        // the beginning and wide characters at end, such as
-                        // '1234一二三四', the rough index will be smaller.
-                        if (preState > 0) {
-                            startIdx += endIdx;
-                            lfIds.push(startIdx);
-                            break;
-                        } else if (preState < 0) {
-                            endIdx++;
-                        } else {
-                            preState = -1;
-                            endIdx++;
-                        }
+                    } else if (preState < 0) {
+                        endIdx++;
                     } else {
-                        if (preState < 0) {
-                            startIdx += endIdx - 1;
-                            lfIds.push(startIdx);
-                            break;
-                        } else if (preState > 0) {
-                            endIdx--;
-                        }
-                        else {
-                            preState = 1;
-                            endIdx--;
-                        }
+                        preState = -1;
+                        endIdx++;
+                    }
+                } else {
+                    if (preState < 0) {
+                        startIdx += endIdx - 1;
+                        lfIds.push(startIdx);
+                        break;
+                    } else if (preState > 0) {
+                        endIdx--;
+                    }
+                    else {
+                        preState = 1;
+                        endIdx--;
                     }
                 }
-            } else {
-                break;
             }
         }
         return {
@@ -643,22 +756,25 @@ class IOTerm {
     }
 
     private inputText(text: string) {
-        let wrap = this.autoWrap(this.lastLine + escapeText(text));
-        this.tmpPanel.innerHTML = wrap.wrappedHTML;
+        let wrap = this.autoWrap(this.main.lastLine + escapeText(text));
+        this.main.tmpPanel.innerHTML = wrap.wrappedHTML;
 
         let cursorPos = this.input.selectionStart;
         if (cursorPos === this.input.value.length) {
-            this.moveCursor(this.numRows + wrap.numRows - 1, wrap.colOffset)
+            this.moveCursor(
+                this.main.numRows + wrap.numRows - 1,
+                wrap.colOffset
+            );
         } else {
             wrap = this.autoWrap(
-                this.lastLine +
+                this.main.lastLine +
                 escapeText(text.substring(0, cursorPos))
-            )
+            );
             this.moveCursor(
-                this.numRows + wrap.numRows - 1,
+                this.main.numRows + wrap.numRows - 1,
                 wrap.colOffset,
                 text.charAt(cursorPos)
-            )
+            );
         }
     }
 
@@ -667,25 +783,21 @@ class IOTerm {
         let charHeight: number;
         if (!character) {
             character = '&nbsp;';
-            charWidth = this.charWidth;
-            charHeight = this.charHeight;
+            charWidth = this.minChar.width;
+            charHeight = this.minChar.height;
         } else {
             this.measurement.innerHTML = character;
             charWidth = this.measurement.offsetWidth;
             charHeight = this.measurement.offsetHeight;
         }
-        if (colOffset + charWidth >= this.htmlPanel.offsetWidth) {
+        if (colOffset + charWidth >= this.main.panel.offsetWidth) {
             numRows += 1;
             colOffset = 0;
         }
         let top = charHeight * (numRows - 1);
 
-        // Move input cursor.
-        this.cursor.style.top = top + 'px';
-        this.cursor.style.left = colOffset + 'px';
-        this.cursor.style.width = charWidth + 'px';
-        this.cursorContent.innerHTML = character;
-        this.flashCursor();
+        this.cursor.move(top, colOffset, charWidth, character);
+        this.cursor.flash();
 
         // Move input box so that the input method can follow the cursor.
         this.input.style.top = top + 'px';
@@ -704,6 +816,10 @@ class IOTerm {
         this.term.style.overflowX = 'hidden';
         this.term.style.overflowY = 'scroll';
 
+        this.container.style.position = 'relative';
+        this.container.style.width = 'calc(100% - ' + getScrollWidth() + 'px)';
+        this.container.style.height = 'calc(100% + 1px)'
+
         this.measurement.style.position = 'absolute';
         this.measurement.style.top = '0';
         this.measurement.style.left = '0';
@@ -719,48 +835,6 @@ class IOTerm {
         this.input.style.padding = '0';
         this.input.style.lineHeight = '1.5';
 
-        this.container.style.width = '100%';
-        this.container.style.height = 'calc(100% + 1px)'
-
-        this.htmlPanel.style.width = '100%';
-        this.htmlPanel.style.margin = '0';
-
-        this.tmpPanel.style.width = '100%';
-        this.tmpPanel.style.margin = '0';
-
-        this.tabPanel.style.display = 'flex';
-        this.tabPanel.style.justifyContent = 'space-around';
-        this.tabPanel.style.position = 'absolute';
-        this.tabPanel.style.top = '100px';
-        this.tabPanel.style.left = '0';
-        this.tabPanel.style.width = '100%';
-        this.tabPanel.style.height = '3em';
-        this.tabPanel.style.margin = '5px';
-        this.tabPanel.style.backgroundColor = 'rgba(255, 255, 255, 0.2)';
-        this.tabPanel.style.lineHeight = '3em';
-        this.tabPanel.style.textOverflow = 'ellipsis';
-        this.tabPanel.style.overflow = 'hidden';
-        // this.tabPanel.style.visibility = 'hidden';
-
-        this.cursor.style.position = 'absolute';
-        this.cursor.style.top = '0';
-        this.cursor.style.left = '0';
-        this.cursor.style.display = 'flex';
-        this.cursor.style.alignItems = 'center';
-        this.cursor.style.border = 'none';
-
-        this.cursorBg.style.width = '100%';
-
-        this.cursorContent.style.position = 'absolute';
-        this.cursorContent.style.top = '0';
-        this.cursorContent.style.left = '0';
-        this.cursorContent.style.height = '100%';
-        
-        this.setPadding({
-            top: '1px',
-            bottom: '1px',
-            left: '3px'
-        });
         this.setColor({
             text: '#eee',
             background: '#2e3436'
