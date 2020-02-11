@@ -6,7 +6,6 @@ declare class IOTerm {
     private container;
     private htmlPanel;
     private tmpPanel;
-    private tabPanel;
     private cursor;
     private cursorBg;
     private cursorContent;
@@ -19,8 +18,9 @@ declare class IOTerm {
     private timer;
     private isRunning;
     private commandHandler;
+    private tabPanel;
+    private promptIndex;
     private tabHandler;
-    private tabCount;
     constructor(parentElement: HTMLElement);
     end(): void;
     resize(): void;
@@ -32,6 +32,12 @@ declare class IOTerm {
     setFont({ family, size }: {
         family?: string;
         size?: string;
+    }): void;
+    setPadding({ top, right, bottom, left }: {
+        top?: string;
+        right?: string;
+        bottom?: string;
+        left?: string;
     }): void;
     setPrefix(html: string): void;
     setTabHandler(tabHandler: Function): void;

@@ -25,9 +25,6 @@ document.getElementById('seResizeBtn').addEventListener('click', (event) => {
     term.resize();
 });
 
-var welcome = 'Welcome to IOTerm. Please use escape characters "&amp;amp;", "&amp;lt;" and "&amp;gt;" instead of "&amp;", "&lt;" and "&gt;", if an ampersand, less-than sign or greater-than sign is needed to be shown. <span style="color: red">HTML tag &lt;span&gt; can be used for special style.</span> If a newline is wanted, please add line feed "\\n" rather than "\\r\\n" or HTML tag &lt;br&gt;.\n';
-
-
 var term = new IOTerm(document.getElementById('term'));
 term.setColor({
     text: '#fff86f',
@@ -53,6 +50,8 @@ term.setCommandHandler((command) => {
         }
     }, 1000);
 });
+
+var welcome = 'Welcome to IOTerm. Please use escape characters "&amp;amp;", "&amp;lt;" and "&amp;gt;" instead of "&amp;", "&lt;" and "&gt;", if an ampersand, less-than sign or greater-than sign is needed to be shown. <span style="color: red">HTML tag &lt;span&gt; can be used for special style.</span> If a newline is wanted, please add line feed "\\n" rather than "\\r\\n" or HTML tag &lt;br&gt;.\n';
 
 term.write(welcome);
 term.end();

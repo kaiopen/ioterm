@@ -27,7 +27,6 @@ class IOTerm {
     private container: HTMLDivElement;
     private htmlPanel: HTMLPreElement;
     private tmpPanel: HTMLPreElement;
-    private tabPanel: HTMLPreElement;
 
     // The element `input` moves as soon as the element `cursor` moving.
     private cursor: HTMLDivElement;
@@ -57,9 +56,10 @@ class IOTerm {
     private isRunning: boolean;
 
     private commandHandler: Function;
-    private tabHandler: Function;
 
-    private tabCount: number;  // 计数按<Tab>键的次数
+    private tabPanel: HTMLDivElement;
+    private promptIndex: number;  // 计数按<Tab>键的次数
+    private tabHandler: Function;
 
     constructor(parentElement: HTMLElement) {
         this.term = document.createElement('div');
@@ -70,6 +70,8 @@ class IOTerm {
         this.htmlPanel = document.createElement('pre');
         this.tmpPanel = document.createElement('pre');
         
+        this.tabPanel = document.createElement('div');
+        
         this.cursor = document.createElement('div');
         this.cursorBg = document.createElement('div');
         this.cursorContent = document.createElement('div');
@@ -78,6 +80,7 @@ class IOTerm {
         this.term.append(
             this.measurement, this.input,
             this.container,
+            this.tabPanel,
             this.cursor
         );
         this.container.append(this.htmlPanel, this.tmpPanel);
@@ -91,10 +94,12 @@ class IOTerm {
             items: [{ value: '', modification: '' }] 
         };
         this.commandHandler = () => { this.end(); };
+        this.promptIndex = -1;
         this.tabHandler = () => { 
             return [
                 '<span style="color: #729fcf;">.</span>', 
-                '<span style="color: #729fcf;">..</span>'
+                '<span style="color: #729fcf;">..</span>',
+                '<span style="color: #729fcf;">abcd</span>'
             ]; 
         };
 
@@ -141,6 +146,7 @@ class IOTerm {
         if (text) {
             this.term.style.color = text;
             this.cursorBg.style.backgroundColor = text
+            this.tabPanel.style.color = text;
         }
         if (background) {
             this.term.style.backgroundColor = background;
@@ -169,6 +175,28 @@ class IOTerm {
         this.cursorBg.style.height = this.charHeight - 2 + 'px';
 
         this.resize();
+    }
+
+    public setPadding({top, right, bottom, left}: {
+        top?: string, 
+        right?: string, 
+        bottom?: string, 
+        left?: string
+    }) {
+        if (top !== void 0) {
+            this.htmlPanel.style.marginTop = top;
+        }
+        if (right !== void 0) {
+            this.htmlPanel.style.marginRight = right;
+            this.tmpPanel.style.marginRight = right;
+        }
+        if (bottom !== void 0) {
+            this.tmpPanel.style.marginBottom = bottom;
+        }
+        if (left !== void 0) {
+            this.htmlPanel.style.marginLeft = left;
+            this.tmpPanel.style.marginLeft = left;
+        }
     }
 
     public setPrefix(html: string) {
@@ -285,7 +313,7 @@ class IOTerm {
         });
 
         this.input.addEventListener('input', (event) => {
-            let text = (event.target as HTMLInputElement).value;
+            let text = this.input.value;
             this.history.items[this.history.index].modification = text;
             this.inputText(text);
         });
@@ -309,9 +337,8 @@ class IOTerm {
             switch (event.keyCode) {
             case 13:  // Enter
                 this.term.scrollTop = this.term.scrollHeight
-                text = (event.target as HTMLInputElement).value;
-                (event.target as HTMLInputElement).value = '';
-                text = text.trim();
+                text = this.input.value.trim();
+                this.input.value = '';
                 if (text) {
                     this.write(escapeText(text) + '\n');
 
@@ -332,18 +359,20 @@ class IOTerm {
                     }                    
                 } else {
                     this.write('\n');
-                    let lastIndex = this.history.items.length - 1;
-                    this.history.items[lastIndex].modification = '';
-                    this.history.index = lastIndex;
-                    this.end();
+                    if (!this.isRunning) {
+                        let lastIndex = this.history.items.length - 1;
+                        this.history.items[lastIndex].modification = '';
+                        this.history.index = lastIndex;
+                        this.end();                        
+                    }
                 }
                 break;
 
             // Moving the cursor.
             case 37:  // Left
-                index = this.input['selectionEnd'] - 1;
+                index = this.input.selectionEnd - 1
                 if (index >= 0) {
-                    text = (event.target as HTMLInputElement).value;
+                    text = this.input.value;
                     wrap = this.autoWrap(
                         this.lastLine +
                         escapeText(text.substring(0, index))
@@ -356,8 +385,8 @@ class IOTerm {
                 }
                 break;
             case 39:  // Right
-                index = this.input['selectionEnd'] + 1;
-                text = (event.target as HTMLInputElement).value;
+                index = this.input.selectionEnd + 1;
+                text = this.input.value;
                 if (index <= text.length) {
                     wrap = this.autoWrap(
                         this.lastLine +
@@ -401,6 +430,24 @@ class IOTerm {
 
             case 9:  // Tab
                 console.log('Tab');
+                if (this.promptIndex === -1) {
+                    let prompts = this.tabHandler(this.input.value.trim());
+                    let prompt: string;
+                    for (let i = ++this.promptIndex; 
+                         (i < this.promptIndex + 4) && (i < prompts.length); 
+                         i++
+                    ) {
+                        prompt = prompts[i];
+                        let item = document.createElement('div');
+                        item.style.display = 'inline-block';
+                        item.style.height = '100%';
+                        item.style.paddingLeft = '10px';
+                        item.style.paddingRight = '10px';
+                        item.innerHTML = i + '. ' +prompt;
+                        this.tabPanel.append(item);
+                    }
+                    this.promptIndex++;
+                }
                 break;
             }
         });
@@ -681,6 +728,20 @@ class IOTerm {
         this.tmpPanel.style.width = '100%';
         this.tmpPanel.style.margin = '0';
 
+        this.tabPanel.style.display = 'flex';
+        this.tabPanel.style.justifyContent = 'space-around';
+        this.tabPanel.style.position = 'absolute';
+        this.tabPanel.style.top = '100px';
+        this.tabPanel.style.left = '0';
+        this.tabPanel.style.width = '100%';
+        this.tabPanel.style.height = '3em';
+        this.tabPanel.style.margin = '5px';
+        this.tabPanel.style.backgroundColor = 'rgba(255, 255, 255, 0.2)';
+        this.tabPanel.style.lineHeight = '3em';
+        this.tabPanel.style.textOverflow = 'ellipsis';
+        this.tabPanel.style.overflow = 'hidden';
+        // this.tabPanel.style.visibility = 'hidden';
+
         this.cursor.style.position = 'absolute';
         this.cursor.style.top = '0';
         this.cursor.style.left = '0';
@@ -695,6 +756,11 @@ class IOTerm {
         this.cursorContent.style.left = '0';
         this.cursorContent.style.height = '100%';
         
+        this.setPadding({
+            top: '1px',
+            bottom: '1px',
+            left: '3px'
+        });
         this.setColor({
             text: '#eee',
             background: '#2e3436'
