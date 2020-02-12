@@ -27,9 +27,7 @@ document.getElementById('seResizeBtn').addEventListener('click', (event) => {
 
 var term = new IOTerm(document.getElementById('term'));
 term.setPadding({
-    top: '2px',
-    left: '5px',
-    bottom: '2px'
+    left: '5px'
 });
 term.setColor({
     text: '#fff86f',

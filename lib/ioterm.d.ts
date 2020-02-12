@@ -37,7 +37,10 @@ declare class IOTerm {
     private enableInput;
     private getLineFeedIndices;
     private inputText;
+    private insert;
     private moveCursor;
+    private moveTab;
+    private scroll;
     private setStyle;
 }
 export { escapeText, IOTerm };

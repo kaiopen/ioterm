@@ -69,7 +69,7 @@ class Main {
 
     private setStyle() {
         this.container.style.width = '100%';
-        this.container.style.height = '100%';
+        // this.container.style.height = '100%';
         this.panel.style.width = '100%';
         this.panel.style.margin = '0';
         this.tmpPanel.style.width = '100%';
@@ -152,12 +152,32 @@ class Tab {
         this.setStyle();
     }
 
-    public clear() {
+    public init() {
+        this.container.style.visibility = 'hidden';
+        this.container.style.top = '0';
         this.count = 0;
         this.panel.innerHTML = '';
     }
 
-    public createItem(prompt: string) {
+    public move(top: number) {
+        this.container.style.top = top + 'px';
+    }
+
+    public showPrompts(input: string, cursorPos: number) {
+        let prompts = this.handler(input, cursorPos);
+        if (!prompts) {
+            return
+        }
+        for (let i = 0; i < prompts.length; i++) {
+            this.createItem(prompts[i]);
+        }
+        (this.panel.children[0] as HTMLDivElement)
+            .style.backgroundColor = 'rgba(255, 255, 255, 0.2)';
+        this.count++;
+        this.container.style.visibility = 'visible';
+    }
+
+    private createItem(prompt: string) {
         let item = document.createElement('div');
         item.style.display = 'inline-block';
         item.style.height = '100%';
@@ -168,11 +188,12 @@ class Tab {
 
     private setStyle() {
         this.container.style.position = 'absolute';
-        this.container.style.top = '100px';
+        this.container.style.top = '0';
         this.container.style.left = '5px';
         this.container.style.right = '5px';
         this.container.style.height = '3em';
         this.container.style.overflow = 'hidden';
+        this.container.style.visibility = 'hidden';
 
         this.scrollContainer.style.position = 'absolute';
         this.scrollContainer.style.top = '0';
@@ -237,7 +258,10 @@ class IOTerm {
         this.setStyle();
         this.addEventListeners();
         this.enableInput();
-        this.moveCursor(this.main.numRows, 0);
+        this.moveCursor({
+            numRows: this.main.numRows,
+            colOffset: 0
+        });
     }
 
     public end() {
@@ -264,11 +288,11 @@ class IOTerm {
                 this.main.lastLine +
                 escapeText(text.substring(0, cursorPos))
             );
-            this.moveCursor(
-                this.main.numRows + wrap.numRows - 1,
-                wrap.colOffset,
-                text.charAt(cursorPos)
-            )
+            this.moveCursor({
+                numRows: this.main.numRows + wrap.numRows - 1,
+                colOffset: wrap.colOffset,
+                character: text.charAt(cursorPos)
+            })
         }
 
         this.enableInput();
@@ -346,13 +370,13 @@ class IOTerm {
 
         // Automatically scroll to the bottom if the scrollbar was at the
         // bottom before writing.
-        let isScroll = false;
+        let scroll = false;
         if (
             this.term.scrollHeight -
             this.term.scrollTop -
-            this.term.offsetHeight <= 1
+            this.term.clientHeight <= 1
         ) {
-            isScroll = true;
+            scroll = true;
         }
 
         html = this.main.lastLine + this.input.value + html;
@@ -387,21 +411,21 @@ class IOTerm {
         }
         this.main.panel.innerHTML = wrappedHTML;
         this.main.tmpPanel.innerHTML = this.main.lastLine;
-        this.moveCursor(this.main.numRows, wrap.colOffset);
-
-        if (isScroll) {
-            this.term.scrollTop = this.term.scrollHeight;
-        }
+        this.moveCursor({
+            numRows: this.main.numRows,
+            colOffset: wrap.colOffset,
+            scroll: scroll
+        });
     }
 
     private addEventListeners() {
         this.term.addEventListener('mouseup', (event) => {
             let selectionText = window.getSelection().toString();
             if (selectionText === '') {
-                let scrollTop = this.term.scrollTop;
+                // let scrollTop = this.term.scrollTop;
                 this.enableInput();
                 this.cursor.flash();
-                this.term.scrollTop = scrollTop;
+                // this.term.scrollTop = scrollTop;
             }
         });
 
@@ -424,17 +448,7 @@ class IOTerm {
                 pasteText = pasteText.replace(/\r\n/g, ' ')
                                      .replace(/\r/g, ' ')
                                      .replace(/\n/g, ' ');
-
-                let text = this.input.value;
-                let cursorPos = this.input.selectionStart;
-                let preText = text.substring(0, cursorPos) + pasteText;
-                text = preText + text.substring(cursorPos);
-                this.input.value = text;
-                this.input.setSelectionRange(preText.length, preText.length);
-
-                this.history.items[this.history.index].modification = text;
-
-                this.inputText(text);
+                this.insert(pasteText);
             }
             event.preventDefault();
         });
@@ -443,6 +457,12 @@ class IOTerm {
             let text = this.input.value;
             this.history.items[this.history.index].modification = text;
             this.inputText(text);
+            if (this.tab.count !== 0) {
+                this.tab.init();
+                this.tab.showPrompts(
+                    this.input.value, this.input.selectionStart);
+                this.moveTab();
+            }
         });
 
         this.input.addEventListener('blur', () => {
@@ -460,38 +480,49 @@ class IOTerm {
                 colOffset: number
             }
             let item: historyItem;
+            let div: HTMLDivElement;
 
             switch (event.keyCode) {
             case 13:  // Enter
-                this.term.scrollTop = this.term.scrollHeight
-                text = this.input.value.trim();
-                this.input.value = '';
-                if (text) {
-                    this.write(escapeText(text) + '\n');
-                    if (this.isRunning) {
-                        break;
+                if (this.tab.count === 0) {
+                    // this.term.scrollTop = this.term.scrollHeight
+                    text = this.input.value.trim();
+                    this.input.value = '';
+                    if (text) {
+                        this.write(escapeText(text) + '\n');
+                        if (this.isRunning) {
+                            break;
+                        }
+                        this.isRunning = true;
+                        index = this.history.index;
+                        let len = this.history.items.length;
+                        this.history.items[len - 1].value = text;
+                        this.history.items[index].modification = '';
+                        this.history.index = len;
+                        this.history.items.push({
+                            value: '',
+                            modification: ''
+                        });
+                        this.commandHandler(text);
+                    } else {
+                        this.write('\n');
+                        if (this.isRunning) {
+                            break;
+                        }
+                        let lastIndex = this.history.items.length - 1;
+                        this.history.items[lastIndex].modification = '';
+                        this.history.index = lastIndex;
+                        this.end();
                     }
-                    this.isRunning = true;
-                    index = this.history.index;
-                    let len = this.history.items.length;
-                    this.history.items[len - 1].value = text;
-                    this.history.items[index].modification = '';
-                    this.history.index = len;
-                    this.history.items.push({
-                        value: '',
-                        modification: ''
-                    });
-                    this.commandHandler(text);
                 } else {
-                    this.write('\n');
-                    if (this.isRunning) {
-                        break;
-                    }
-                    let lastIndex = this.history.items.length - 1;
-                    this.history.items[lastIndex].modification = '';
-                    this.history.index = lastIndex;
-                    this.end();
+                    this.insert(
+                        (this.tab.panel
+                             .children[this.tab.count - 1] as HTMLDivElement
+                        ).innerText
+                    );
+                    this.tab.init();
                 }
+
                 break;
 
             // Moving the cursor.
@@ -503,11 +534,11 @@ class IOTerm {
                         this.main.lastLine +
                         escapeText(text.substring(0, index))
                     );
-                    this.moveCursor(
-                        this.main.numRows + wrap.numRows - 1,
-                        wrap.colOffset,
-                        text.charAt(index)
-                    )
+                    this.moveCursor({
+                        numRows: this.main.numRows + wrap.numRows - 1,
+                        colOffset: wrap.colOffset,
+                        character: text.charAt(index)
+                    })
                 }
                 break;
             case 39:  // Right
@@ -518,11 +549,11 @@ class IOTerm {
                         this.main.lastLine +
                         escapeText(text.substring(0, index))
                     );
-                    this.moveCursor(
-                        this.main.numRows + wrap.numRows - 1,
-                        wrap.colOffset,
-                        text.charAt(index)
-                    )
+                    this.moveCursor({
+                        numRows: this.main.numRows + wrap.numRows - 1,
+                        colOffset: wrap.colOffset,
+                        character: text.charAt(index)
+                    });
                 }
                 break;
 
@@ -558,29 +589,31 @@ class IOTerm {
                 let count = this.tab.count;
                 let tabItem: HTMLDivElement;
                 if (count === 0) {
-                    let prompts = this.tab.handler(this.input.value.trim());
-                    for (let i = 0; i < prompts.length; i++) {
-                        this.tab.createItem(prompts[i]);
-                    }
-                }
-                if (count !== 0) {
+                    this.tab.showPrompts(
+                        this.input.value, this.input.selectionStart);
+                    this.moveTab();
+                } else {
                     tabItem = (
                         this.tab.panel.children[count - 1] as HTMLDivElement);
                     tabItem.style.backgroundColor = 'transparent';
+
+                    tabItem = (
+                        this.tab.panel.children[count] as HTMLDivElement);
+                    if (tabItem) {
+                        this.tab.count = count + 1;
+                    } else {
+                        tabItem = (
+                            this.tab.panel.children[0] as HTMLDivElement);
+                        this.tab.count = 1;
+                    }
+                    tabItem.style
+                           .backgroundColor = 'rgba(255, 255, 255, 0.2)';
                 }
-                tabItem = (this.tab.panel.children[count] as HTMLDivElement);
-                if (tabItem) {
-                    this.tab.count = count + 1;
-                } else {
-                    tabItem = (this.tab.panel.children[0] as HTMLDivElement);
-                    this.tab.count = 1;
-                }
-                tabItem.style.backgroundColor = 'rgba(255, 255, 255, 0.2)';
                 event.preventDefault();
                 break;
             case 27:  // ESC
                 console.log('ESC');
-                this.tab.clear();
+                this.tab.init();
             }
         });
     }
@@ -761,40 +794,55 @@ class IOTerm {
 
         let cursorPos = this.input.selectionStart;
         if (cursorPos === this.input.value.length) {
-            this.moveCursor(
-                this.main.numRows + wrap.numRows - 1,
-                wrap.colOffset
-            );
+            this.moveCursor({
+                numRows: this.main.numRows + wrap.numRows - 1,
+                colOffset: wrap.colOffset
+            });
         } else {
             wrap = this.autoWrap(
                 this.main.lastLine +
                 escapeText(text.substring(0, cursorPos))
             );
-            this.moveCursor(
-                this.main.numRows + wrap.numRows - 1,
-                wrap.colOffset,
-                text.charAt(cursorPos)
-            );
+            this.moveCursor({
+                numRows: this.main.numRows + wrap.numRows - 1,
+                colOffset: wrap.colOffset,
+                character: text.charAt(cursorPos)
+            });
         }
     }
 
-    private moveCursor(numRows: number, colOffset: number, character?: string) {
+    private insert(html: string) {
+        let text = this.input.value;
+        let cursorPos = this.input.selectionStart;
+        let preText = text.substring(0, cursorPos) + html;
+        text = preText + text.substring(cursorPos);
+        this.input.value = text;
+        this.input.setSelectionRange(preText.length, preText.length);
+
+        this.history.items[this.history.index].modification = text;
+
+        this.inputText(text);
+    }
+
+    private moveCursor({numRows, colOffset, character, scroll}: {
+        numRows: number,
+        colOffset: number,
+        character?: string,
+        scroll?: boolean
+    }) {
         let charWidth: number;
-        let charHeight: number;
         if (!character) {
             character = '&nbsp;';
             charWidth = this.minChar.width;
-            charHeight = this.minChar.height;
         } else {
             this.measurement.innerHTML = character;
             charWidth = this.measurement.offsetWidth;
-            charHeight = this.measurement.offsetHeight;
         }
         if (colOffset + charWidth >= this.main.panel.offsetWidth) {
             numRows += 1;
             colOffset = 0;
         }
-        let top = charHeight * (numRows - 1);
+        let top = this.minChar.height * (numRows - 1);
 
         this.cursor.move(top, colOffset, charWidth, character);
         this.cursor.flash();
@@ -802,6 +850,23 @@ class IOTerm {
         // Move input box so that the input method can follow the cursor.
         this.input.style.top = top + 'px';
         this.input.style.left = colOffset + 'px';
+
+        if (scroll === void 0 || scroll) {
+            this.scroll(top + this.minChar.height + 1);
+        }
+    }
+
+    private moveTab() {
+        this.tab.move(
+            this.main.panel.offsetHeight + this.main.tmpPanel.offsetHeight);
+    }
+
+    private scroll(bottom?: number) {
+        // `bottom` is the position at the bottom of the view.
+        if (bottom === void 0) {
+            bottom = this.term.scrollHeight;
+        }
+        this.term.scrollTop = bottom - this.term.clientHeight;
     }
 
     private setStyle() {
@@ -818,7 +883,7 @@ class IOTerm {
 
         this.container.style.position = 'relative';
         this.container.style.width = 'calc(100% - ' + getScrollWidth() + 'px)';
-        this.container.style.height = 'calc(100% + 1px)'
+        // this.container.style.height = '100%';
 
         this.measurement.style.position = 'absolute';
         this.measurement.style.top = '0';
