@@ -1,19 +1,24 @@
-IOTerm is a simple front-end terminal component that just has 500 lines of code including about ten percent of comment. It just provides <b>Input</b> and <b>Output</b> and some interface for expansion and customization.
+IOTerm is a simple front-end terminal component but not as same as a terminal. It is just in charge of <b>Input</b> and <b>Output</b> but do not care about what is the input, what is the output and how the input will be precessed. To make full use of a web page, there are some differences between IOTerm and the terminal we use in a Linux distribution.
 
 [中文版](https://github.com/kaiopen/IOTerm/blob/master/README.md)
 
-### What IOTerm Is
-* IOTerm provides a terminal interface with user-friendly input and output. But other functions such as processing of input data, command execution and network transmission need to be implemented by you.
-* Thanks for [XTerm.js](https://github.com/xtermjs/xterm.js) and [jianshi](https://github.com/moyuer1992/-jianshi). I have learned a lot from them.
-* But IOTerm does not use HTTML tag &lt;canvas&gt; because &lt;pre&gt; is able to meet the needs.
-* IOTerm cannot work with multiline interaction functions such as vim, tmux. It more like a textarea that only last can be edited.
+### Differences
+* IOTerm does not process any data. The handler need to be defined by you.
+* Question-and-answer interaction is supported. If you need some complex interactions such as vim, it is better for you to implement a text editor with rich functions.
+* We used to typing &lt;Tab&gt; for prompting. It is the same here. But the form of prompting is different.
+* If you paste text including line feeds, the terminal will run the commands one by one immediately excluding the last one without a line feed. Here, IOTerm will not run the commands immediately. Like paste lines into a single line input box, line feeds will be regarded as white spaces.
 
 ### Features
-* auto wrap
-* flash input cursor and move input cursor via keyborad
-* scroll as same as a real terminal
-* highlight text by inserting HTML tags.
-* input method follows input cursor.
+* auto wraping
+* input cursor with flashing and moving
+* input method following
+* copying and pasting
+* highlighting
+* scrolling as same as a real terminal
+* simple interaction
+* history
+* prompting
+* custom color and font
 
 ### Getting Start
 1. Installation
@@ -29,96 +34,36 @@ var ioterm = IOTerm(parentElement);
 
 ```
 
-3. Examples
-``` html
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta http-equiv="X-UA-Compatible" content="ie=edge">
-    <title>IOTerm</title>
-    <style>
-    #term {
-        width: 240px;
-        height: 180px;
-    }
-    </style>
-</head>
-<body>
-
-    <div id="term" ></div>
-
-    <script src="bundle.js"></script>
-</body>
-</html>
-```
-
-``` javascript
-import { IOTerm, escapeText } from 'ioterm';
-
-var data = {
-    env: 'base',
-    user: 'admin',
-    server: 'Puter',
-    pwd: '~',
-    prefix: '',
-}
-
-function updatePrefix({ env, user, server, pwd }) {
-    if (env !== void 0) {
-        data.env = env;
-    }
-    if (user !== void 0) {
-        data.user = user;
-    }
-    if (server !== void 0) {
-        data.server = server;
-    }
-    if (pwd !== void 0) {
-        data.pwd = pwd;
-    }
-    data.prefix = '(' + data.env + ') <span style="color: #8ae234">' +
-                  data.user + '@' + data.server +
-                  '</span>:<span style="color: #729fcf">' + data.pwd +
-                  '</span>$ ';
-}
-
-var welcome = 'Welcome to IOTerm. Please use escape characters "&amp;amp;", "&amp;lt;" and "&amp;gt;" instead of "&amp;", "&lt;" and "&gt;", if an ampersand, less-than sign or greater-than sign is needed to be shown. <span style="color: red">HTML tag &lt;span&gt; can be used for special style.</span> If a newline is wanted, please add line feed "\\n" rather than "\\r\\n" or HTML tag &lt;br&gt;.\n';
-
-updatePrefix({});
-
-var term = new IOTerm(document.getElementById('term'));
-term.setCommandHandler((command) => {
-    // Replace line feed '\r\n' and '\r' with '\n'.
-    command = command.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
-    // Escape '<', '>' and '&' to '&lt;', '&gt;' and '&amp;'.
-    // Pay attention to the order between highlighting and escaping.
-    command = escapeText(command);
-    console.log(command);
-    var i = 0;
-    var timer = setInterval(() => {
-        term.write(i++ + 'Hello, ' + command);
-        if (i === 3) {
-            clearInterval(timer);
-            term.write(data.prefix);
-        }
-    }, 500);
-})
-term.write(welcome);
-term.write(data.prefix);
-
-```
-
-[Here](https://github.com/kaiopen/IOTerm/tree/master/demo) for more examples.
+3. [Here](https://github.com/kaiopen/IOTerm/tree/master/demo) for examples.
 
 ### TODO
-* Remove white space added by line feeds &lt;br&gt; when copying.
-* Handle line feeds when pasting.
-* History.
-* Automatic completion and prompt.
-* Set color scheme.
-* Simple interaction so that output will not conflict with input at the same time.
+* Customize scrollbar or provide a interface for customizing scrollbar.
+
+### Methods of IOTerm
+1. `end()`
+The method should be called when the command is finished. And the prefix will be printed.
+
+2. `setColor({text, background}: {text?: string, background?: string})`
+Set color of text or background.
+
+3. `setCommandHandler(commandHandler: Function)`
+Set a handler to handle commands. The handler has one input parameter `command`, a string input by user. It may be a correct linux command such as "ls", "cd ~/Documents", or "python hello.py". It could be something else without a clear meaning such as " ", "!", "Hello World". It also could be the input input by users when a command is processed or running.
+
+4. `setFont({family, size}: {family?: string, size?: string})`
+Set font family or size.
+
+5. `setPrefix(html: string)`
+Set the prefix we used to seeing in a terminal, including the virtual environment, the user name, the server name, the current work directory and an indicator for permissions. The `html` should be preprocessed by function `highlight`.
+
+6. `setTabHandler(tabHandler: Function)`
+Set a handler for prompting. The handler has two input paremeters, the string input by users and the position of the input cursor. The return must be an array of strings or an empty array.
+
+7. `write(html: string)`
+Write and show something. The `html` should be preprocessed by function `highlight`. If a newline is wanted, please add a line feed "\\n" rather than "\\r\\n", "\\r" or HTML tag "<br>".
+
+### Functions
+1. `highlight(text: string, style?: string)`
+Highlight `text` with `style`.
 
 # License
 MIT License

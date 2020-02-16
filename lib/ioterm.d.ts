@@ -1,19 +1,22 @@
-declare function escapeText(strHtml: string): string;
+import { highlight } from './util';
 declare class IOTerm {
     private term;
     private container;
-    private measurement;
-    private input;
     private main;
+    private input;
+    private panel;
     private cursor;
-    private minChar;
+    private prefix;
+    private p;
     private isRunning;
     private commandHandler;
+    private textColor;
+    private backgroundColor;
+    private timer;
     private history;
     private tab;
     constructor(parentElement: HTMLElement);
     end(): void;
-    refresh(): void;
     setColor({ text, background }: {
         text?: string;
         background?: string;
@@ -23,24 +26,19 @@ declare class IOTerm {
         family?: string;
         size?: string;
     }): void;
-    setPadding({ top, right, bottom, left }: {
-        top?: string;
-        right?: string;
-        bottom?: string;
-        left?: string;
-    }): void;
     setPrefix(html: string): void;
-    setTabHandler(tabHandler: Function): void;
+    setTabHanler(tabHandler: Function): void;
     write(html: string): void;
     private addEventListeners;
-    private autoWrap;
-    private enableInput;
-    private getLineFeedIndices;
-    private inputText;
+    private createPanel;
+    private flashCursor;
+    private hideCursor;
+    private initStyle;
     private insert;
-    private moveCursor;
-    private moveTab;
     private scroll;
-    private setStyle;
+    private showCursor;
+    private showHistory;
+    private updateCursor;
+    private writeTemporarily;
 }
-export { escapeText, IOTerm };
+export { IOTerm, highlight };
