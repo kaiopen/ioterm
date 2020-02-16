@@ -1,5 +1,6 @@
 demo/
 src/
+test/
 .gitignore
 package-lock.json
 tsconfig.json
