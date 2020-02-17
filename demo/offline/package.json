@@ -2,7 +2,7 @@
   "name": "offline",
   "version": "1.0.0",
   "description": "",
-  "private": true,
+  "main": "index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
   },
@@ -10,8 +10,10 @@
   "author": "",
   "license": "ISC",
   "dependencies": {
-    "ioterm": "0.0.1",
-    "webpack": "^4.41.5",
-    "webpack-cli": "^3.3.10"
+    "ioterm": "^0.1.0"
+  },
+  "devDependencies": {
+    "webpack": "^4.41.6",
+    "webpack-cli": "^3.3.11"
   }
 }

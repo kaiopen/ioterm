@@ -197,8 +197,8 @@ class IOTerm {
                     break;
                 }
                 text = this.input.value;
-                this.write('\n');
                 if (!this.isRunning) {
+                    this.write('\n');
                     if (!text) {
                         index = this.history.items.length - 1;
                         this.history.index = index;
@@ -215,6 +215,10 @@ class IOTerm {
                         value: '',
                         modification: ''
                     });
+                } else {
+                    if (!text) {
+                        this.write('<span>&nbsp;</span>\n');
+                    }
                 }
                 this.commandHandler(text);
                 break;

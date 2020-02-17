@@ -27,7 +27,7 @@ declare class IOTerm {
         size?: string;
     }): void;
     setPrefix(html: string): void;
-    setTabHanler(tabHandler: Function): void;
+    setTabHandler(tabHandler: Function): void;
     write(html: string): void;
     private addEventListeners;
     private createPanel;
