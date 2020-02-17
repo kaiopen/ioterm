@@ -5,7 +5,7 @@ IOTerm is a simple front-end terminal component but not as same as a terminal. I
 ### Differences
 * IOTerm does not process any data. The handler need to be defined by you.
 * Question-and-answer interaction is supported. If you need some complex interactions such as vim, it is better for you to implement a text editor with rich functions.
-* We used to typing &lt;Tab&gt; for prompting. It is the same here. But the form of prompting is different.
+* We used to typing &lt;Tab&gt; for prompting. It is the same here. But the form of prompting is different. A panel will show prompts at the first time typing &lt;Tab&gt;. And choose a prompt by typing &lt;Tab&gt;. Select a prompt by typing &lt;Enter&gt;. Type &lt;Esc&gt; for end.
 * If you paste text including line feeds, the terminal will run the commands one by one immediately excluding the last one without a line feed. Here, IOTerm will not run the commands immediately. Like paste lines into a single line input box, line feeds will be regarded as white spaces.
 
 ### Features
