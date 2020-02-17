@@ -31,6 +31,7 @@ class Tab {
     }
 
     public init() {
+        this.scroll(0);
         this.container.style.display = 'none';
         this.container.style.top = '0';
         this.count = 0;
@@ -76,7 +77,6 @@ class Tab {
         (this.panel.children[0] as HTMLDivElement)
             .style.backgroundColor = 'rgba(255, 255, 255, 0.2)';
         this.count++;
-        this.scroll(0);
         this.container.style.display = 'block';
         return true;
     }
