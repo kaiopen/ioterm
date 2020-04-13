@@ -45,10 +45,12 @@ class IOTerm {
     private tab: Tab;
 
     constructor(parentElement: HTMLElement) {
+        let shadow = parentElement.attachShadow({ mode: 'closed' });
+
         this.term = document.createElement('div');
         this.container = document.createElement('div');
         this.main = document.createElement('div');
-        parentElement.append(this.term);
+        shadow.append(this.term);
         this.term.append(this.container);
         this.container.append(this.main);
 
@@ -306,9 +308,7 @@ class IOTerm {
 
     private initStyle() {
         this.term.style.width = '100%';
-        this.term.style.minWidth = '100px';
         this.term.style.height = '100%';
-        this.term.style.minHeight = '30px';
         this.term.style.overflowX = 'hidden';
         this.term.style.overflowY = 'scroll';
         this.term.style.fontFamily = 'monospace';
@@ -328,7 +328,7 @@ class IOTerm {
         this.input.style.padding = '0';
 
         this.setColor({ text: '#eee', background: '#2e3436' });
-        this.setFont({ family: 'monospace', size: '14px' });
+        this.setFont({ family: 'monospace', size: '1em' });
     }
 
     private insert(text: string) {

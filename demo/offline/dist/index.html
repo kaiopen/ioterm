@@ -6,11 +6,18 @@
     <meta http-equiv="X-UA-Compatible" content="ie=edge">
     <title>IOTerm</title>
     <style>
+        body {
+            background-color: blue;
+        }
         #term {
             position: absolute;
             top: 200px;
-            left: 200px;
-            width: 300px;
+            width: 400px;
+            height: 100px;
+            font-size: 14px;
+        }
+        .term2 {
+            width: 200px;
             height: 100px;
         }
     </style>
@@ -18,7 +25,9 @@
 <body>
     <div id="term"></div>
     <button id="seResizeBtn">click to resize the terminal</button>
-
+    <div class="term2">
+        <my-ioterm></my-ioterm>
+    </div>
     <script src="main.js"></script>
 </body>
 </html>

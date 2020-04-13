@@ -8,7 +8,7 @@ document.getElementById('seResizeBtn').addEventListener('click', (event) => {
 
 // Create a IOTerm and tell it who is its parent element.
 var term = new IOTerm(document.getElementById('term'));
-
+// term.setFont({ family: 'monospace', size: '14px' });
 term.setPrefix(
     highlight('(base) ') +
     highlight('admin@Puter', 'color: #8ae234') +
@@ -59,3 +59,10 @@ var text2 = 'If a newline is wanted, please add a line feed "\\n" rather than "\
 term.write(
     highlight(text1) + highlight(text2, 'color: red; font-weight: 600;'));
 term.end();
+
+customElements.define('my-ioterm', class extends HTMLElement {
+    constructor() {
+        super();
+        new IOTerm(this);
+    }
+});

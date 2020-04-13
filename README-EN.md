@@ -8,6 +8,15 @@ IOTerm is a simple front-end terminal component but not as same as a terminal. I
 * We used to typing &lt;Tab&gt; for prompting. It is the same here. But the form of prompting is different. A panel will show prompts at the first time typing &lt;Tab&gt;. And choose a prompt by typing &lt;Tab&gt;. Select a prompt by typing &lt;Enter&gt;. Type &lt;Esc&gt; for end.
 * If you paste text including line feeds, the terminal will run the commands one by one immediately excluding the last one without a line feed. Here, IOTerm will not run the commands immediately. Like paste lines into a single line input box, line feeds will be regarded as white spaces.
 
+## Release log
+### v1.0.0
+1. IOTerm with complete functions.
+
+### v1.1.0
+1. Change default font size to 1 em.
+2. Remove the limit of minimum width and minimum height.
+3. Use shadow DOM.
+
 ### Features
 * auto wraping
 * input cursor with flashing and moving
