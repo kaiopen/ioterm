@@ -16,7 +16,7 @@
   },
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/kaiopen/IOTerm.git"
+    "url": "git+https://github.com/kaiopen/ioterm.git"
   },
   "keywords": [
     "term"
@@ -24,9 +24,9 @@
   "author": "Kai Zhang",
   "license": "MIT",
   "bugs": {
-    "url": "https://github.com/kaiopen/IOTerm/issues"
+    "url": "https://github.com/kaiopen/ioterm/issues"
   },
-  "homepage": "https://github.com/kaiopen/IOTerm#readme",
+  "homepage": "https://github.com/kaiopen/ioterm#readme",
   "devDependencies": {
     "typescript": "^3.8.3"
   }

@@ -2,7 +2,7 @@
 
 &emsp;&emsp;更多关于 IOTerm 可见 [我的系列博文](https://blog.csdn.net/ZhangK9509/article/details/104356703)。
 
-[English](https://github.com/kaiopen/IOTerm/blob/master/README-EN.md)
+[English](./README-EN.md)
 
 ### 不同
 * IOTerm 不处理任何数据，你需要完成处理函数的定义。
@@ -45,7 +45,7 @@ var ioterm = IOTerm(parentElement);
 
 ```
 
-3. [样例](https://github.com/kaiopen/IOTerm/tree/master/demo)。
+3. [样例](https://github.com/kaiopen/ioterm-demo)。
 
 ### 后续工作
 * 替换浏览器自有的滚动条，或提供自定义滚动条的接口，使 IOTerm 更好看。

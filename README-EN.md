@@ -1,6 +1,6 @@
 IOTerm is a simple front-end terminal component but not as same as a terminal. It is just in charge of <b>Input</b> and <b>Output</b> but do not care about what is the input, what is the output and how the input will be precessed. To make full use of a web page, there are some differences between IOTerm and the terminal we use in a Linux distribution.
 
-[中文版](https://github.com/kaiopen/IOTerm/blob/master/README.md)
+[中文版](./README.md)
 
 ### Differences
 * IOTerm does not process any data. The handler need to be defined by you.
@@ -43,7 +43,7 @@ var ioterm = IOTerm(parentElement);
 
 ```
 
-3. [Here](https://github.com/kaiopen/IOTerm/tree/master/demo) for examples.
+3. [Here](https://github.com/kaiopen/ioterm-demo) for examples.
 
 ### TODO
 * Customize scrollbar or provide a interface for customizing scrollbar.
