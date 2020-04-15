@@ -9,6 +9,8 @@ document.getElementById('seResizeBtn').addEventListener('click', (event) => {
 // Create a IOTerm and tell it who is its parent element.
 var term = new IOTerm(document.getElementById('term'));
 // term.setFont({ family: 'monospace', size: '14px' });
+term.setMargin('0.5em');
+term.setPadding('0.5em');
 term.setPrefix(
     highlight('(base) ') +
     highlight('admin@Puter', 'color: #8ae234') +

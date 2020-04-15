@@ -110,6 +110,14 @@ class IOTerm {
         }
     }
 
+    public setMargin(margin: string) {
+        this.term.style.margin = margin;
+    }
+
+    public setPadding(padding: string) {
+        this.term.style.padding = padding;
+    }
+
     public setPrefix(html: string) {
         this.prefix = html;
     }
@@ -307,6 +315,7 @@ class IOTerm {
     }
 
     private initStyle() {
+        this.term.style.boxSizing = 'border-box'
         this.term.style.width = '100%';
         this.term.style.height = '100%';
         this.term.style.overflowX = 'hidden';

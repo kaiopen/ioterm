@@ -26,6 +26,8 @@ declare class IOTerm {
         family?: string;
         size?: string;
     }): void;
+    setMargin(margin: string): void;
+    setPadding(padding: string): void;
     setPrefix(html: string): void;
     setTabHandler(tabHandler: Function): void;
     write(html: string): void;
