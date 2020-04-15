@@ -17,6 +17,10 @@ IOTerm is a simple front-end terminal component but not as same as a terminal. I
 2. Remove the limit of minimum width and minimum height.
 3. Use shadow DOM.
 
+### v1.1.1
+1. Provide interface to set margin.
+2. Provide interface to set padding.
+
 ### Features
 * auto wraping
 * input cursor with flashing and moving
