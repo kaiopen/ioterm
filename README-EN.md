@@ -61,13 +61,19 @@ Set a handler to handle commands. The handler has one input parameter `command`,
 4. `setFont({family, size}: {family?: string, size?: string})`
 Set font family or size.
 
-5. `setPrefix(html: string)`
+5. `setMargin(margin: string)`
+Set margin as same as setting margin in css.
+
+6. `setPadding(padding: string)`
+Set padding as same as setting padding in css.
+
+7. `setPrefix(html: string)`
 Set the prefix we used to seeing in a terminal, including the virtual environment, the user name, the server name, the current work directory and an indicator for permissions. The `html` should be preprocessed by function `highlight`.
 
-6. `setTabHandler(tabHandler: Function)`
+8. `setTabHandler(tabHandler: Function)`
 Set a handler for prompting. The handler has two input paremeters, the string input by users and the position of the input cursor. The return must be an array of strings or an empty array.
 
-7. `write(html: string)`
+9. `write(html: string)`
 Write and show something. The `html` should be preprocessed by function `highlight`. If a newline is wanted, please add a line feed "\\n" rather than "\\r\\n", "\\r" or HTML tag "<br>".
 
 ### Functions

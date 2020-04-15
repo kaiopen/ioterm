@@ -31,6 +31,10 @@
 2. 去除最小宽度和最小高度限制；
 3. 使用 shadow DOM。
 
+### v1.1.1
+1. 提供设置 margin 的方法；
+2. 提供设置 padding 的方法。
+
 ### 使用
 1. 安装 IOTerm
 ```
@@ -63,13 +67,19 @@ var ioterm = IOTerm(parentElement);
 4. `setFont({family, size}: {family?: string, size?: string})`
 设置字体或字号。
 
-5. `setPrefix(html: string)`
+5. `setMargin(margin: string)`
+设置 margin。与 css 中设置 margin 的规则相同。
+
+6. `setPadding(padding: string)`
+设置 padding。与 css 中设置 padding 的规则相同。
+
+7. `setPrefix(html: string)`
 设置前缀，可以包括虚拟环境、用户名、主机名、当前工作路径或指示器。`html`必须是`highlight`函数处理过的字符串。
 
-6. `setTabHandler(tabHandler: Function)`
+8. `setTabHandler(tabHandler: Function)`
 设置用于补全和提示的处理函数。该函数有两个输入参数，一是用户输入的内容，二是当前输入光标的位置。返回值必须是字符串数组，或者空数组。
 
-7. `write(html: string)`
+9. `write(html: string)`
 向 IOTerm 写入内容，并显示。`html`必须是`highlight`函数处理过的字符串。请勿使用“\\r\\n”、“\\r”或者 HTML 标签“<br>”作为换行符，而是使用“\\n”。
 
 ### 函数
